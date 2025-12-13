@@ -186,6 +186,7 @@ class AdapterConfig:
     env: Dict[str, str] = field(default_factory=dict)
     timeout: int = 300
     max_retries: int = 3
+    tool_permissions: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class RalphConfig:

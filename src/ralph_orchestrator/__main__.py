@@ -32,10 +32,11 @@ def init_project():
     # Create directories
     dirs = [
         ".agent/prompts",
-        ".agent/checkpoints", 
+        ".agent/checkpoints",
         ".agent/metrics",
         ".agent/plans",
-        ".agent/memory"
+        ".agent/memory",
+        ".agent/cache"
     ]
     
     for dir_path in dirs:
