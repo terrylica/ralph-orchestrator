@@ -292,7 +292,43 @@
   - 305 total ACP tests passing
   - 8 integration tests properly skipped (GOOGLE_API_KEY not set)
 
-**ACP Implementation Complete!** All 12 steps finished. Ready for documentation update.
+**ACP Implementation Complete!** All 12 steps finished.
+
+### Documentation Update (COMPLETED - Dec 13, 2025)
+- Updated README.md with:
+  - Version bump to v1.2.0
+  - ACP-compliant agents in prerequisites
+  - ACP configuration example in ralph.yml
+  - CLI options (--acp-agent, --acp-permission-mode)
+  - Project structure showing ACP adapter files
+  - Version history entry for ACP features
+
+---
+
+## ACP Implementation Summary
+
+**Total Tests**: 305 ACP-specific tests + 620 existing = 925+ tests passing
+
+**Files Created**:
+- `src/ralph_orchestrator/adapters/acp.py` - Main ACP adapter
+- `src/ralph_orchestrator/adapters/acp_protocol.py` - JSON-RPC 2.0 protocol
+- `src/ralph_orchestrator/adapters/acp_client.py` - Subprocess manager
+- `src/ralph_orchestrator/adapters/acp_models.py` - Data models
+- `src/ralph_orchestrator/adapters/acp_handlers.py` - Permission/file/terminal handlers
+- `tests/test_acp_*.py` - 9 test files
+
+**Features Implemented**:
+1. JSON-RPC 2.0 message protocol
+2. Subprocess lifecycle management
+3. ACP initialization handshake (initialize, session/new)
+4. Session/prompt execution with streaming updates
+5. Permission handling (4 modes: auto_approve, deny_all, allowlist, interactive)
+6. File operations (read_text_file, write_text_file)
+7. Terminal operations (create, output, wait_for_exit, kill, release)
+8. Configuration via ralph.yml and environment variables
+9. CLI integration (-a acp, --acp-agent, --acp-permission-mode)
+10. Cost tracking integration (ACP has zero cost as billing depends on agent)
+11. Full orchestrator loop integration
 
 ---
 
