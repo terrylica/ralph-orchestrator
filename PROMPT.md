@@ -98,26 +98,40 @@ Port the following capabilities:
 - Add to context.py for prompt handling
 - Integrate with logging to mask sensitive output
 
-### 2. Thread-Safe Configuration (HIGH)
+### 2. Thread-Safe Configuration (HIGH) - DONE
 **Source:** `/home/arch/code/loop/ralph/core/config.py` (418 lines)
 
-- [ ] Add `threading.RLock` to RalphConfig
-- [ ] Thread-safe property accessors: `get_delay()`, `set_delay()`, etc.
-- [ ] Extract ConfigValidator class for validation logic
-- [ ] Ensure backwards compatibility with existing YAML loading
+- [x] Add `threading.RLock` to RalphConfig
+- [x] Thread-safe property accessors: `get_max_iterations()`, `set_max_iterations()`, etc.
+- [x] Extract ConfigValidator class for validation logic
+- [x] Ensure backwards compatibility with existing YAML loading
 
-**Constraint:** Must not change `RalphConfig` constructor signature or required fields.
+**Implementation:**
+- Added `_lock: threading.RLock` field to RalphConfig (excluded from init/repr/compare)
+- Thread-safe getters/setters for: max_iterations, max_runtime, checkpoint_interval, retry_delay, max_tokens, max_cost, verbose
+- Created `ConfigValidator` class with validation for all numeric parameters
+- Added `validate()` and `get_warnings()` methods to RalphConfig
+- 38 new tests in `tests/test_config.py` covering thread safety and validation
 
-### 3. Advanced Logging with Rotation (HIGH)
+**Constraint:** Must not change `RalphConfig` constructor signature or required fields. ✓ Preserved
+
+### 3. Advanced Logging with Rotation (HIGH) - DONE
 **Source:** `/home/arch/code/loop/ralph/core/logger.py` (455 lines)
 
-- [ ] Automatic log rotation at 10MB with 3 backups
-- [ ] Thread-safe rotation with `threading.Lock`
-- [ ] Unicode sanitization for encoding errors
-- [ ] Security-aware logging (mask sensitive data before write)
-- [ ] Dual interface: async methods + sync wrappers
+- [x] Automatic log rotation at 10MB with 3 backups
+- [x] Thread-safe rotation with `threading.Lock`
+- [x] Unicode sanitization for encoding errors
+- [x] Security-aware logging (mask sensitive data before write)
+- [x] Dual interface: async methods + sync wrappers
 
-**Constraint:** Must not break existing logging calls in orchestrator.py.
+**Implementation:**
+- Created `src/ralph_orchestrator/async_logger.py` with `AsyncFileLogger` class (409 lines)
+- Uses `asyncio.Lock` for async operations and `threading.Lock` for rotation
+- Integrates with `SecurityValidator.mask_sensitive_data()` for sensitive data protection
+- 42 unit tests in `tests/test_async_logger.py` covering all features
+- All tests pass
+
+**Constraint:** Must not break existing logging calls in orchestrator.py. ✓ Preserved
 
 ### 4. Graceful Signal Handling (HIGH)
 **Source:** `/home/arch/code/loop/ralph/core/runner.py` (lines 87-114)
