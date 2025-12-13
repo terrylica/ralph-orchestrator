@@ -5,6 +5,7 @@
 import sys
 import logging
 import argparse
+import threading
 import yaml
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
@@ -49,6 +50,134 @@ class AgentType(Enum):
     GEMINI = "gemini"
     AUTO = "auto"
 
+class ConfigValidator:
+    """Validates Ralph configuration settings.
+
+    Provides validation methods for configuration parameters with security
+    checks and warnings for unusual values.
+    """
+
+    # Validation thresholds
+    LARGE_DELAY_THRESHOLD_SECONDS = 3600  # 1 hour
+    SHORT_TIMEOUT_THRESHOLD_SECONDS = 10  # Very short timeout
+    TYPICAL_AI_ITERATION_MIN_SECONDS = 30  # Typical minimum time for AI iteration
+    TYPICAL_AI_ITERATION_MAX_SECONDS = 300  # Typical maximum time for AI iteration
+
+    # Reasonable limits to prevent resource exhaustion
+    MAX_ITERATIONS_LIMIT = 100000
+    MAX_RUNTIME_LIMIT = 604800  # 1 week in seconds
+    MAX_TOKENS_LIMIT = 100000000  # 100M tokens
+    MAX_COST_LIMIT = 10000.0  # $10K USD
+
+    @staticmethod
+    def validate_max_iterations(max_iterations: int) -> List[str]:
+        """Validate max iterations parameter."""
+        errors = []
+        if max_iterations < 0:
+            errors.append("Max iterations must be non-negative")
+        elif max_iterations > ConfigValidator.MAX_ITERATIONS_LIMIT:
+            errors.append(f"Max iterations exceeds limit ({ConfigValidator.MAX_ITERATIONS_LIMIT})")
+        return errors
+
+    @staticmethod
+    def validate_max_runtime(max_runtime: int) -> List[str]:
+        """Validate max runtime parameter."""
+        errors = []
+        if max_runtime < 0:
+            errors.append("Max runtime must be non-negative")
+        elif max_runtime > ConfigValidator.MAX_RUNTIME_LIMIT:
+            errors.append(f"Max runtime exceeds limit ({ConfigValidator.MAX_RUNTIME_LIMIT}s)")
+        return errors
+
+    @staticmethod
+    def validate_checkpoint_interval(checkpoint_interval: int) -> List[str]:
+        """Validate checkpoint interval parameter."""
+        errors = []
+        if checkpoint_interval < 0:
+            errors.append("Checkpoint interval must be non-negative")
+        return errors
+
+    @staticmethod
+    def validate_retry_delay(retry_delay: int) -> List[str]:
+        """Validate retry delay parameter."""
+        errors = []
+        if retry_delay < 0:
+            errors.append("Retry delay must be non-negative")
+        elif retry_delay > ConfigValidator.LARGE_DELAY_THRESHOLD_SECONDS:
+            errors.append(f"Retry delay exceeds limit ({ConfigValidator.LARGE_DELAY_THRESHOLD_SECONDS}s)")
+        return errors
+
+    @staticmethod
+    def validate_max_tokens(max_tokens: int) -> List[str]:
+        """Validate max tokens parameter."""
+        errors = []
+        if max_tokens < 0:
+            errors.append("Max tokens must be non-negative")
+        elif max_tokens > ConfigValidator.MAX_TOKENS_LIMIT:
+            errors.append(f"Max tokens exceeds limit ({ConfigValidator.MAX_TOKENS_LIMIT})")
+        return errors
+
+    @staticmethod
+    def validate_max_cost(max_cost: float) -> List[str]:
+        """Validate max cost parameter."""
+        errors = []
+        if max_cost < 0:
+            errors.append("Max cost must be non-negative")
+        elif max_cost > ConfigValidator.MAX_COST_LIMIT:
+            errors.append(f"Max cost exceeds limit (${ConfigValidator.MAX_COST_LIMIT})")
+        return errors
+
+    @staticmethod
+    def validate_context_threshold(context_threshold: float) -> List[str]:
+        """Validate context threshold parameter."""
+        errors = []
+        if not 0.0 <= context_threshold <= 1.0:
+            errors.append("Context threshold must be between 0.0 and 1.0")
+        return errors
+
+    @staticmethod
+    def validate_prompt_file(prompt_file: str) -> List[str]:
+        """Validate prompt file exists and is readable."""
+        errors = []
+        path = Path(prompt_file)
+        if not path.exists():
+            errors.append(f"Prompt file not found: {prompt_file}")
+        elif not path.is_file():
+            errors.append(f"Prompt file is not a regular file: {prompt_file}")
+        return errors
+
+    @staticmethod
+    def get_warning_large_delay(retry_delay: int) -> List[str]:
+        """Check for unusually large delay values."""
+        if retry_delay > ConfigValidator.LARGE_DELAY_THRESHOLD_SECONDS:
+            return [
+                f"Warning: Retry delay is very large ({retry_delay}s = {retry_delay/60:.1f}m). "
+                f"Did you mean to use minutes instead of seconds?"
+            ]
+        return []
+
+    @staticmethod
+    def get_warning_single_iteration(max_iterations: int) -> List[str]:
+        """Check for max_iterations=1."""
+        if max_iterations == 1:
+            return [
+                "Warning: max_iterations is 1. "
+                "Ralph is designed for continuous loops. Did you mean 0 (infinite)?"
+            ]
+        return []
+
+    @staticmethod
+    def get_warning_short_timeout(max_runtime: int) -> List[str]:
+        """Check for very short runtime limits."""
+        if 0 < max_runtime < ConfigValidator.SHORT_TIMEOUT_THRESHOLD_SECONDS:
+            return [
+                f"Warning: Max runtime is very short ({max_runtime}s). "
+                f"AI iterations typically take {ConfigValidator.TYPICAL_AI_ITERATION_MIN_SECONDS}-"
+                f"{ConfigValidator.TYPICAL_AI_ITERATION_MAX_SECONDS} seconds."
+            ]
+        return []
+
+
 @dataclass
 class AdapterConfig:
     """Configuration for individual adapters"""
@@ -60,7 +189,14 @@ class AdapterConfig:
 
 @dataclass
 class RalphConfig:
-    """Configuration for Ralph orchestrator"""
+    """Configuration for Ralph orchestrator.
+
+    Thread-safe configuration class with RLock protection for mutable fields.
+    Provides both direct attribute access (backwards compatible) and thread-safe
+    getter/setter methods for concurrent access scenarios.
+    """
+
+    # Core configuration fields
     agent: AgentType = AgentType.AUTO
     prompt_file: str = DEFAULT_PROMPT_FILE
     max_iterations: int = DEFAULT_MAX_ITERATIONS
@@ -81,21 +217,97 @@ class RalphConfig:
     allow_unsafe_paths: bool = False
     agent_args: List[str] = field(default_factory=list)
     adapters: Dict[str, AdapterConfig] = field(default_factory=dict)
-    
+
+    # Thread safety lock - not included in initialization/equals
+    _lock: threading.RLock = field(
+        default_factory=threading.RLock, init=False, repr=False, compare=False
+    )
+
+    # Thread-safe property access methods for mutable fields
+    def get_max_iterations(self) -> int:
+        """Thread-safe access to max_iterations property."""
+        with self._lock:
+            return self.max_iterations
+
+    def set_max_iterations(self, value: int) -> None:
+        """Thread-safe setting of max_iterations property."""
+        with self._lock:
+            object.__setattr__(self, 'max_iterations', value)
+
+    def get_max_runtime(self) -> int:
+        """Thread-safe access to max_runtime property."""
+        with self._lock:
+            return self.max_runtime
+
+    def set_max_runtime(self, value: int) -> None:
+        """Thread-safe setting of max_runtime property."""
+        with self._lock:
+            object.__setattr__(self, 'max_runtime', value)
+
+    def get_checkpoint_interval(self) -> int:
+        """Thread-safe access to checkpoint_interval property."""
+        with self._lock:
+            return self.checkpoint_interval
+
+    def set_checkpoint_interval(self, value: int) -> None:
+        """Thread-safe setting of checkpoint_interval property."""
+        with self._lock:
+            object.__setattr__(self, 'checkpoint_interval', value)
+
+    def get_retry_delay(self) -> int:
+        """Thread-safe access to retry_delay property."""
+        with self._lock:
+            return self.retry_delay
+
+    def set_retry_delay(self, value: int) -> None:
+        """Thread-safe setting of retry_delay property."""
+        with self._lock:
+            object.__setattr__(self, 'retry_delay', value)
+
+    def get_max_tokens(self) -> int:
+        """Thread-safe access to max_tokens property."""
+        with self._lock:
+            return self.max_tokens
+
+    def set_max_tokens(self, value: int) -> None:
+        """Thread-safe setting of max_tokens property."""
+        with self._lock:
+            object.__setattr__(self, 'max_tokens', value)
+
+    def get_max_cost(self) -> float:
+        """Thread-safe access to max_cost property."""
+        with self._lock:
+            return self.max_cost
+
+    def set_max_cost(self, value: float) -> None:
+        """Thread-safe setting of max_cost property."""
+        with self._lock:
+            object.__setattr__(self, 'max_cost', value)
+
+    def get_verbose(self) -> bool:
+        """Thread-safe access to verbose property."""
+        with self._lock:
+            return self.verbose
+
+    def set_verbose(self, value: bool) -> None:
+        """Thread-safe setting of verbose property."""
+        with self._lock:
+            object.__setattr__(self, 'verbose', value)
+
     @classmethod
     def from_yaml(cls, config_path: str) -> 'RalphConfig':
-        """Load configuration from YAML file"""
+        """Load configuration from YAML file."""
         config_file = Path(config_path)
         if not config_file.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
-        
+
         with open(config_file, 'r') as f:
             config_data = yaml.safe_load(f)
-        
+
         # Convert agent string to AgentType enum
         if 'agent' in config_data:
             config_data['agent'] = AgentType(config_data['agent'])
-        
+
         # Process adapter configurations
         if 'adapters' in config_data:
             adapter_configs = {}
@@ -106,16 +318,51 @@ class RalphConfig:
                     # Simple boolean enable/disable
                     adapter_configs[name] = AdapterConfig(enabled=bool(adapter_data))
             config_data['adapters'] = adapter_configs
-        
+
         # Filter out unknown keys
-        valid_keys = {field.name for field in cls.__dataclass_fields__.values()}
+        valid_keys = {f.name for f in cls.__dataclass_fields__.values()}
         filtered_data = {k: v for k, v in config_data.items() if k in valid_keys}
-        
+
         return cls(**filtered_data)
-    
+
     def get_adapter_config(self, adapter_name: str) -> AdapterConfig:
-        """Get configuration for a specific adapter"""
-        return self.adapters.get(adapter_name, AdapterConfig())
+        """Get configuration for a specific adapter."""
+        with self._lock:
+            return self.adapters.get(adapter_name, AdapterConfig())
+
+    def validate(self) -> List[str]:
+        """Validate configuration settings.
+
+        Returns:
+            List of validation errors (empty if valid).
+        """
+        errors = []
+
+        with self._lock:
+            errors.extend(ConfigValidator.validate_max_iterations(self.max_iterations))
+            errors.extend(ConfigValidator.validate_max_runtime(self.max_runtime))
+            errors.extend(ConfigValidator.validate_checkpoint_interval(self.checkpoint_interval))
+            errors.extend(ConfigValidator.validate_retry_delay(self.retry_delay))
+            errors.extend(ConfigValidator.validate_max_tokens(self.max_tokens))
+            errors.extend(ConfigValidator.validate_max_cost(self.max_cost))
+            errors.extend(ConfigValidator.validate_context_threshold(self.context_threshold))
+
+        return errors
+
+    def get_warnings(self) -> List[str]:
+        """Get configuration warnings (non-blocking issues).
+
+        Returns:
+            List of warning messages.
+        """
+        warnings = []
+
+        with self._lock:
+            warnings.extend(ConfigValidator.get_warning_large_delay(self.retry_delay))
+            warnings.extend(ConfigValidator.get_warning_single_iteration(self.max_iterations))
+            warnings.extend(ConfigValidator.get_warning_short_timeout(self.max_runtime))
+
+        return warnings
 
 def main():
     """Main entry point"""

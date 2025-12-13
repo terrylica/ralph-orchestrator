@@ -26,12 +26,27 @@ except ImportError:
 
 class ClaudeAdapter(ToolAdapter):
     """Adapter for Claude using the Python SDK."""
-    
+
     # Default max buffer size: 10MB (handles large screenshots from chrome-devtools-mcp)
     DEFAULT_MAX_BUFFER_SIZE = 10 * 1024 * 1024
 
+    # Default model: Claude Opus 4.5 (most intelligent model)
+    DEFAULT_MODEL = "claude-opus-4-5-20251101"
+
+    # Model pricing (per million tokens)
+    MODEL_PRICING = {
+        "claude-opus-4-5-20251101": {"input": 5.0, "output": 25.0},
+        "claude-sonnet-4-5-20250929": {"input": 3.0, "output": 15.0},
+        "claude-haiku-4-5-20251001": {"input": 1.0, "output": 5.0},
+        # Legacy models
+        "claude-3-opus": {"input": 15.0, "output": 75.0},
+        "claude-3-sonnet": {"input": 3.0, "output": 15.0},
+        "claude-3-haiku": {"input": 0.25, "output": 1.25},
+    }
+
     def __init__(self, verbose: bool = False, max_buffer_size: int = None,
-                 inherit_user_settings: bool = True, cli_path: str = None):
+                 inherit_user_settings: bool = True, cli_path: str = None,
+                 model: str = None):
         super().__init__("claude")
         self.sdk_available = CLAUDE_SDK_AVAILABLE
         self._system_prompt = None
@@ -45,6 +60,8 @@ class ClaudeAdapter(ToolAdapter):
         self._inherit_user_settings = inherit_user_settings
         # Optional path to user's Claude Code CLI (uses bundled CLI if not specified)
         self._cli_path = cli_path
+        # Model selection - defaults to Opus 4.5
+        self._model = model or self.DEFAULT_MODEL
     
     def check_availability(self) -> bool:
         """Check if Claude SDK is available and properly configured."""
@@ -58,7 +75,8 @@ class ClaudeAdapter(ToolAdapter):
                   enable_all_tools: bool = False,
                   enable_web_search: bool = True,
                   inherit_user_settings: Optional[bool] = None,
-                  cli_path: Optional[str] = None):
+                  cli_path: Optional[str] = None,
+                  model: Optional[str] = None):
         """Configure the Claude adapter with custom options.
 
         Args:
@@ -69,6 +87,7 @@ class ClaudeAdapter(ToolAdapter):
             enable_web_search: If True, explicitly enables WebSearch tool (default: True)
             inherit_user_settings: If True, load user's Claude Code settings including MCP servers (default: True)
             cli_path: Path to user's Claude Code CLI (uses bundled CLI if not specified)
+            model: Model to use (default: claude-opus-4-5-20251101)
         """
         self._system_prompt = system_prompt
         self._allowed_tools = allowed_tools
@@ -83,6 +102,10 @@ class ClaudeAdapter(ToolAdapter):
         # Update CLI path if specified
         if cli_path is not None:
             self._cli_path = cli_path
+
+        # Update model if specified
+        if model is not None:
+            self._model = model
 
         # If web search is enabled and we have an allowed tools list, add WebSearch to it
         if enable_web_search and allowed_tools is not None and 'WebSearch' not in allowed_tools:
@@ -206,6 +229,12 @@ class ClaudeAdapter(ToolAdapter):
                 options_dict['cli_path'] = cli_path
                 if self.verbose:
                     logger.info(f"Using custom Claude CLI: {cli_path}")
+
+            # Set model - defaults to Opus 4.5
+            model = kwargs.get('model', self._model)
+            options_dict['model'] = model
+            if self.verbose:
+                logger.info(f"Using model: {model}")
 
             # Create options
             options = ClaudeAgentOptions(**options_dict)
@@ -414,8 +443,8 @@ class ClaudeAdapter(ToolAdapter):
             if output:
                 logger.debug(f"Output preview: {output[:200]}...")
             
-            # Calculate cost if we have token count
-            cost = self._calculate_cost(tokens_used) if tokens_used > 0 else None
+            # Calculate cost if we have token count (using model-specific pricing)
+            cost = self._calculate_cost(tokens_used, model) if tokens_used > 0 else None
             
             # Log response details if verbose
             if self.verbose:
@@ -433,7 +462,7 @@ class ClaudeAdapter(ToolAdapter):
                 output=output,
                 tokens_used=tokens_used if tokens_used > 0 else None,
                 cost=cost,
-                metadata={"model": kwargs.get("model", "claude-3-sonnet")}
+                metadata={"model": model}
             )
             
         except asyncio.TimeoutError:
@@ -451,19 +480,48 @@ class ClaudeAdapter(ToolAdapter):
                 error=str(e)
             )
     
-    def _calculate_cost(self, tokens: Optional[int]) -> Optional[float]:
-        """Calculate estimated cost based on tokens."""
+    def _calculate_cost(self, tokens: Optional[int], model: str = None) -> Optional[float]:
+        """Calculate estimated cost based on tokens and model.
+
+        Args:
+            tokens: Total tokens used (input + output combined)
+            model: Model ID used for the request
+
+        Returns:
+            Estimated cost in USD, or None if tokens is None/0
+        """
         if not tokens:
             return None
-        
-        # Claude 3 Sonnet pricing (approximate)
-        # $0.003 per 1K input tokens, $0.015 per 1K output tokens
-        # Using average for estimation
-        cost_per_1k = 0.009
-        return (tokens / 1000) * cost_per_1k
+
+        model = model or self._model
+
+        # Get model pricing or use default
+        if model in self.MODEL_PRICING:
+            pricing = self.MODEL_PRICING[model]
+        else:
+            # Fallback to Opus 4.5 pricing for unknown models
+            pricing = self.MODEL_PRICING[self.DEFAULT_MODEL]
+
+        # Estimate input/output split (typically ~30% input, ~70% output for agent work)
+        # This is an approximation since we don't always get separate counts
+        input_tokens = int(tokens * 0.3)
+        output_tokens = int(tokens * 0.7)
+
+        input_cost = (input_tokens / 1_000_000) * pricing["input"]
+        output_cost = (output_tokens / 1_000_000) * pricing["output"]
+
+        return input_cost + output_cost
     
-    def estimate_cost(self, prompt: str) -> float:
-        """Estimate cost for the prompt."""
+    def estimate_cost(self, prompt: str, model: str = None) -> float:
+        """Estimate cost for the prompt.
+
+        Args:
+            prompt: The prompt text to estimate cost for
+            model: Model ID to use for pricing (defaults to configured model)
+
+        Returns:
+            Estimated cost in USD
+        """
         # Rough estimation: 1 token ≈ 4 characters
         estimated_tokens = len(prompt) / 4
-        return self._calculate_cost(estimated_tokens) or 0.0
+        return self._calculate_cost(int(estimated_tokens), model) or 0.0
