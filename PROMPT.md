@@ -163,8 +163,43 @@
   - `TestACPHandlersFileIntegration`: 2 tests covering read/write roundtrip, large file handling (1MB)
 - All tests pass (201 total ACP tests)
 
+### Step 8: Terminal handlers (COMPLETED - Dec 13, 2025)
+- Created `Terminal` dataclass in `src/ralph_orchestrator/adapters/acp_handlers.py`:
+  - `id`: Unique terminal identifier
+  - `process`: subprocess.Popen instance
+  - `output_buffer`: Accumulated stdout/stderr
+  - `is_running` property to check process state
+  - `exit_code` property to get exit code
+  - `read_output()`: Non-blocking output read using select
+  - `kill()`: Graceful termination (SIGTERM → wait → SIGKILL)
+  - `wait()`: Wait for process with optional timeout
+- Added terminal tracking to ACPHandlers: `_terminals: dict[str, Terminal]`
+- Implemented five terminal handlers:
+  - `handle_terminal_create(params)`: Creates subprocess with stdout/stderr pipes
+    - Requires `command` (list of strings), optional `cwd`
+    - Returns `{"terminalId": "uuid"}`
+  - `handle_terminal_output(params)`: Reads available output
+    - Returns `{"output": "...", "done": bool}`
+  - `handle_terminal_wait_for_exit(params)`: Waits for process exit
+    - Optional `timeout` parameter
+    - Returns `{"exitCode": int}` or timeout error
+  - `handle_terminal_kill(params)`: Terminates process
+    - Returns `{"success": true}`
+  - `handle_terminal_release(params)`: Cleans up terminal resources
+    - Returns `{"success": true}`
+- Error codes: -32602 (invalid params), -32001 (not found), -32003 (permission), -32000 (general)
+- Updated `src/ralph_orchestrator/adapters/__init__.py` to export `Terminal`
+- Added 26 new tests in `tests/test_acp_handlers.py`:
+  - `TestACPHandlersTerminalCreate`: 6 tests
+  - `TestACPHandlersTerminalOutput`: 4 tests
+  - `TestACPHandlersTerminalWaitForExit`: 5 tests
+  - `TestACPHandlersTerminalKill`: 4 tests
+  - `TestACPHandlersTerminalRelease`: 4 tests
+  - `TestACPHandlersTerminalIntegration`: 3 tests (workflow, stderr, not found)
+- All tests pass (227 total ACP tests)
+
 ### Next iteration:
-**Step 8: Implement terminal handlers** - Create terminal operation handlers for `terminal/create`, `terminal/output`, `terminal/wait_for_exit`, `terminal/kill`, `terminal/release` operations.
+**Step 9: Add configuration support (ralph.yml)** - Enable ACP adapter configuration via ralph.yml with agent_command, agent_args, timeout, permission_mode, and permission_allowlist.
 
 ---
 

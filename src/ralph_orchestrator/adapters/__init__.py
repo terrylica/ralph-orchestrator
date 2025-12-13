@@ -8,7 +8,7 @@ from .claude import ClaudeAdapter
 from .qchat import QChatAdapter
 from .gemini import GeminiAdapter
 from .acp import ACPAdapter
-from .acp_handlers import ACPHandlers, PermissionRequest, PermissionResult
+from .acp_handlers import ACPHandlers, PermissionRequest, PermissionResult, Terminal
 
 __all__ = [
     "ToolAdapter",
@@ -20,4 +20,5 @@ __all__ = [
     "ACPHandlers",
     "PermissionRequest",
     "PermissionResult",
+    "Terminal",
 ]

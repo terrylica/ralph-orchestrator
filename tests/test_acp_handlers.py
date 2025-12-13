@@ -1,5 +1,6 @@
 # ABOUTME: Unit tests for ACPHandlers class
 # ABOUTME: Tests permission modes (auto_approve, deny_all, allowlist, interactive)
+# ABOUTME: Tests terminal operations (create, output, wait_for_exit, kill, release)
 
 """Tests for ACPHandlers - permission handling for ACP adapter."""
 
@@ -825,3 +826,407 @@ class TestACPHandlersFileIntegration:
         # Read
         read_result = handlers.handle_read_file({"path": str(test_file)})
         assert read_result["content"] == original
+
+
+class TestACPHandlersTerminalCreate:
+    """Tests for handle_terminal_create method."""
+
+    def test_create_terminal_success(self):
+        """Test successful terminal creation."""
+        handlers = ACPHandlers()
+
+        result = handlers.handle_terminal_create({
+            "command": ["echo", "hello"]
+        })
+
+        assert "terminalId" in result
+        assert isinstance(result["terminalId"], str)
+        assert len(result["terminalId"]) > 0
+
+    def test_create_terminal_missing_command(self):
+        """Test terminal creation with missing command."""
+        handlers = ACPHandlers()
+
+        result = handlers.handle_terminal_create({})
+
+        assert "error" in result
+        assert result["error"]["code"] == -32602
+        assert "Missing required parameter: command" in result["error"]["message"]
+
+    def test_create_terminal_invalid_command_type(self):
+        """Test terminal creation with invalid command type."""
+        handlers = ACPHandlers()
+
+        result = handlers.handle_terminal_create({
+            "command": "not a list"
+        })
+
+        assert "error" in result
+        assert result["error"]["code"] == -32602
+        assert "command must be a list" in result["error"]["message"]
+
+    def test_create_terminal_empty_command(self):
+        """Test terminal creation with empty command list."""
+        handlers = ACPHandlers()
+
+        result = handlers.handle_terminal_create({
+            "command": []
+        })
+
+        assert "error" in result
+        assert result["error"]["code"] == -32602
+        assert "command list cannot be empty" in result["error"]["message"]
+
+    def test_create_terminal_with_cwd(self, tmp_path):
+        """Test terminal creation with working directory."""
+        handlers = ACPHandlers()
+
+        result = handlers.handle_terminal_create({
+            "command": ["pwd"],
+            "cwd": str(tmp_path)
+        })
+
+        assert "terminalId" in result
+
+    def test_create_multiple_terminals(self):
+        """Test creating multiple terminals."""
+        handlers = ACPHandlers()
+
+        result1 = handlers.handle_terminal_create({"command": ["sleep", "0.1"]})
+        result2 = handlers.handle_terminal_create({"command": ["sleep", "0.1"]})
+
+        assert result1["terminalId"] != result2["terminalId"]
+
+        # Cleanup
+        handlers.handle_terminal_kill({"terminalId": result1["terminalId"]})
+        handlers.handle_terminal_kill({"terminalId": result2["terminalId"]})
+
+
+class TestACPHandlersTerminalOutput:
+    """Tests for handle_terminal_output method."""
+
+    def test_output_success(self):
+        """Test reading terminal output."""
+        handlers = ACPHandlers()
+
+        # Create terminal
+        create_result = handlers.handle_terminal_create({
+            "command": ["echo", "hello world"]
+        })
+        terminal_id = create_result["terminalId"]
+
+        # Wait briefly for output
+        import time
+        time.sleep(0.1)
+
+        # Read output
+        result = handlers.handle_terminal_output({"terminalId": terminal_id})
+
+        assert "output" in result
+        assert "hello world" in result["output"]
+
+        # Cleanup
+        handlers.handle_terminal_release({"terminalId": terminal_id})
+
+    def test_output_missing_terminal_id(self):
+        """Test output with missing terminal ID."""
+        handlers = ACPHandlers()
+
+        result = handlers.handle_terminal_output({})
+
+        assert "error" in result
+        assert result["error"]["code"] == -32602
+        assert "Missing required parameter: terminalId" in result["error"]["message"]
+
+    def test_output_invalid_terminal_id(self):
+        """Test output with invalid terminal ID."""
+        handlers = ACPHandlers()
+
+        result = handlers.handle_terminal_output({"terminalId": "nonexistent"})
+
+        assert "error" in result
+        assert result["error"]["code"] == -32001
+        assert "Terminal not found" in result["error"]["message"]
+
+    def test_output_includes_done_status(self):
+        """Test that output includes done status."""
+        handlers = ACPHandlers()
+
+        # Create a quick command that finishes immediately
+        create_result = handlers.handle_terminal_create({
+            "command": ["true"]
+        })
+        terminal_id = create_result["terminalId"]
+
+        # Wait for command to finish
+        import time
+        time.sleep(0.1)
+
+        result = handlers.handle_terminal_output({"terminalId": terminal_id})
+
+        assert "done" in result
+        assert isinstance(result["done"], bool)
+
+        # Cleanup
+        handlers.handle_terminal_release({"terminalId": terminal_id})
+
+
+class TestACPHandlersTerminalWaitForExit:
+    """Tests for handle_terminal_wait_for_exit method."""
+
+    def test_wait_for_exit_success(self):
+        """Test waiting for terminal exit."""
+        handlers = ACPHandlers()
+
+        # Create terminal with quick command
+        create_result = handlers.handle_terminal_create({
+            "command": ["true"]
+        })
+        terminal_id = create_result["terminalId"]
+
+        result = handlers.handle_terminal_wait_for_exit({"terminalId": terminal_id})
+
+        assert "exitCode" in result
+        assert result["exitCode"] == 0
+
+        # Cleanup
+        handlers.handle_terminal_release({"terminalId": terminal_id})
+
+    def test_wait_for_exit_with_nonzero_exit(self):
+        """Test waiting for terminal with nonzero exit."""
+        handlers = ACPHandlers()
+
+        # Create terminal that fails
+        create_result = handlers.handle_terminal_create({
+            "command": ["false"]
+        })
+        terminal_id = create_result["terminalId"]
+
+        result = handlers.handle_terminal_wait_for_exit({"terminalId": terminal_id})
+
+        assert "exitCode" in result
+        assert result["exitCode"] == 1
+
+        # Cleanup
+        handlers.handle_terminal_release({"terminalId": terminal_id})
+
+    def test_wait_for_exit_missing_terminal_id(self):
+        """Test wait with missing terminal ID."""
+        handlers = ACPHandlers()
+
+        result = handlers.handle_terminal_wait_for_exit({})
+
+        assert "error" in result
+        assert result["error"]["code"] == -32602
+
+    def test_wait_for_exit_invalid_terminal_id(self):
+        """Test wait with invalid terminal ID."""
+        handlers = ACPHandlers()
+
+        result = handlers.handle_terminal_wait_for_exit({"terminalId": "nonexistent"})
+
+        assert "error" in result
+        assert result["error"]["code"] == -32001
+
+    def test_wait_for_exit_with_timeout(self):
+        """Test waiting with timeout."""
+        handlers = ACPHandlers()
+
+        # Create terminal with long-running command
+        create_result = handlers.handle_terminal_create({
+            "command": ["sleep", "10"]
+        })
+        terminal_id = create_result["terminalId"]
+
+        result = handlers.handle_terminal_wait_for_exit({
+            "terminalId": terminal_id,
+            "timeout": 0.1  # 100ms timeout
+        })
+
+        # Should timeout
+        assert "error" in result
+        assert result["error"]["code"] == -32000
+        assert "timed out" in result["error"]["message"].lower()
+
+        # Cleanup
+        handlers.handle_terminal_kill({"terminalId": terminal_id})
+
+
+class TestACPHandlersTerminalKill:
+    """Tests for handle_terminal_kill method."""
+
+    def test_kill_success(self):
+        """Test killing a terminal."""
+        handlers = ACPHandlers()
+
+        # Create terminal with long-running command
+        create_result = handlers.handle_terminal_create({
+            "command": ["sleep", "60"]
+        })
+        terminal_id = create_result["terminalId"]
+
+        result = handlers.handle_terminal_kill({"terminalId": terminal_id})
+
+        assert result == {"success": True}
+
+    def test_kill_missing_terminal_id(self):
+        """Test kill with missing terminal ID."""
+        handlers = ACPHandlers()
+
+        result = handlers.handle_terminal_kill({})
+
+        assert "error" in result
+        assert result["error"]["code"] == -32602
+
+    def test_kill_invalid_terminal_id(self):
+        """Test kill with invalid terminal ID."""
+        handlers = ACPHandlers()
+
+        result = handlers.handle_terminal_kill({"terminalId": "nonexistent"})
+
+        assert "error" in result
+        assert result["error"]["code"] == -32001
+
+    def test_kill_already_exited(self):
+        """Test killing already exited terminal."""
+        handlers = ACPHandlers()
+
+        # Create terminal that exits immediately
+        create_result = handlers.handle_terminal_create({
+            "command": ["true"]
+        })
+        terminal_id = create_result["terminalId"]
+
+        # Wait for it to exit
+        import time
+        time.sleep(0.1)
+
+        # Should still succeed (no-op)
+        result = handlers.handle_terminal_kill({"terminalId": terminal_id})
+        assert result == {"success": True}
+
+
+class TestACPHandlersTerminalRelease:
+    """Tests for handle_terminal_release method."""
+
+    def test_release_success(self):
+        """Test releasing a terminal."""
+        handlers = ACPHandlers()
+
+        # Create terminal
+        create_result = handlers.handle_terminal_create({
+            "command": ["true"]
+        })
+        terminal_id = create_result["terminalId"]
+
+        # Wait for exit
+        import time
+        time.sleep(0.1)
+
+        result = handlers.handle_terminal_release({"terminalId": terminal_id})
+
+        assert result == {"success": True}
+
+    def test_release_removes_from_tracking(self):
+        """Test that release removes terminal from tracking."""
+        handlers = ACPHandlers()
+
+        # Create terminal
+        create_result = handlers.handle_terminal_create({
+            "command": ["true"]
+        })
+        terminal_id = create_result["terminalId"]
+
+        # Wait and release
+        import time
+        time.sleep(0.1)
+        handlers.handle_terminal_release({"terminalId": terminal_id})
+
+        # Subsequent operations should fail
+        result = handlers.handle_terminal_output({"terminalId": terminal_id})
+        assert "error" in result
+        assert result["error"]["code"] == -32001
+
+    def test_release_missing_terminal_id(self):
+        """Test release with missing terminal ID."""
+        handlers = ACPHandlers()
+
+        result = handlers.handle_terminal_release({})
+
+        assert "error" in result
+        assert result["error"]["code"] == -32602
+
+    def test_release_invalid_terminal_id(self):
+        """Test release with invalid terminal ID."""
+        handlers = ACPHandlers()
+
+        result = handlers.handle_terminal_release({"terminalId": "nonexistent"})
+
+        assert "error" in result
+        assert result["error"]["code"] == -32001
+
+
+class TestACPHandlersTerminalIntegration:
+    """Integration tests for terminal operations."""
+
+    def test_full_terminal_workflow(self, tmp_path):
+        """Test complete terminal workflow: create, output, wait, release."""
+        handlers = ACPHandlers()
+
+        # Create a terminal that writes to a file and exits
+        test_file = tmp_path / "output.txt"
+        create_result = handlers.handle_terminal_create({
+            "command": ["sh", "-c", f"echo 'test output' && echo 'done' > {test_file}"]
+        })
+        terminal_id = create_result["terminalId"]
+        assert "terminalId" in create_result
+
+        # Wait for exit
+        wait_result = handlers.handle_terminal_wait_for_exit({"terminalId": terminal_id})
+        assert wait_result["exitCode"] == 0
+
+        # Read output
+        output_result = handlers.handle_terminal_output({"terminalId": terminal_id})
+        assert "test output" in output_result["output"]
+        assert output_result["done"] is True
+
+        # Release terminal
+        release_result = handlers.handle_terminal_release({"terminalId": terminal_id})
+        assert release_result == {"success": True}
+
+        # Verify file was written
+        assert test_file.read_text().strip() == "done"
+
+    def test_terminal_with_stderr(self):
+        """Test terminal captures stderr."""
+        handlers = ACPHandlers()
+
+        # Create terminal that writes to stderr
+        create_result = handlers.handle_terminal_create({
+            "command": ["sh", "-c", "echo error_message >&2"]
+        })
+        terminal_id = create_result["terminalId"]
+
+        # Wait for exit
+        handlers.handle_terminal_wait_for_exit({"terminalId": terminal_id})
+
+        # Read output (should include stderr)
+        output_result = handlers.handle_terminal_output({"terminalId": terminal_id})
+        assert "error_message" in output_result["output"]
+
+        # Cleanup
+        handlers.handle_terminal_release({"terminalId": terminal_id})
+
+    def test_terminal_command_not_found(self):
+        """Test terminal with non-existent command."""
+        handlers = ACPHandlers()
+
+        # Create terminal with non-existent command
+        result = handlers.handle_terminal_create({
+            "command": ["nonexistent_command_xyz123"]
+        })
+
+        # FileNotFoundError raised immediately - returns error, not terminalId
+        assert "error" in result
+        assert result["error"]["code"] == -32001
+        assert "Command not found" in result["error"]["message"]

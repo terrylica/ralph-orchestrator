@@ -1,6 +1,7 @@
 # ABOUTME: ACP handlers for permission requests and file/terminal operations
 # ABOUTME: Provides permission_mode handling (auto_approve, deny_all, allowlist, interactive)
 # ABOUTME: Implements fs/read_text_file and fs/write_text_file handlers with security
+# ABOUTME: Implements terminal/* handlers for command execution
 
 """ACP Handlers for permission requests and agent-to-host operations.
 
@@ -16,15 +17,102 @@ Permission modes:
 File operations:
 - fs/read_text_file: Read file content with security validation
 - fs/write_text_file: Write file content with security validation
+
+Terminal operations:
+- terminal/create: Create a new terminal with command
+- terminal/output: Read output from a terminal
+- terminal/wait_for_exit: Wait for terminal process to exit
+- terminal/kill: Kill a terminal process
+- terminal/release: Release terminal resources
 """
 
 import fnmatch
 import os
 import re
+import subprocess
 import sys
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
+
+
+@dataclass
+class Terminal:
+    """Represents a terminal subprocess.
+
+    Attributes:
+        id: Unique identifier for the terminal.
+        process: The subprocess.Popen instance.
+        output_buffer: Accumulated output from stdout/stderr.
+    """
+
+    id: str
+    process: subprocess.Popen
+    output_buffer: str = ""
+
+    @property
+    def is_running(self) -> bool:
+        """Check if the process is still running."""
+        return self.process.poll() is None
+
+    @property
+    def exit_code(self) -> Optional[int]:
+        """Get the exit code if process has exited."""
+        return self.process.poll()
+
+    def read_output(self) -> str:
+        """Read any available output without blocking.
+
+        Returns:
+            New output since last read.
+        """
+        import select
+
+        new_output = ""
+
+        # Try to read from stdout and stderr
+        for stream in [self.process.stdout, self.process.stderr]:
+            if stream is None:
+                continue
+
+            # Non-blocking read using select
+            while True:
+                ready, _, _ = select.select([stream], [], [], 0)
+                if not ready:
+                    break
+                chunk = stream.read(4096)
+                if chunk:
+                    new_output += chunk
+                else:
+                    break
+
+        self.output_buffer += new_output
+        return new_output
+
+    def kill(self) -> None:
+        """Kill the subprocess."""
+        if self.is_running:
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=1.0)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait()
+
+    def wait(self, timeout: Optional[float] = None) -> int:
+        """Wait for the process to exit.
+
+        Args:
+            timeout: Maximum time to wait in seconds.
+
+        Returns:
+            Exit code of the process.
+
+        Raises:
+            subprocess.TimeoutExpired: If timeout is reached.
+        """
+        return self.process.wait(timeout=timeout)
 
 
 @dataclass
@@ -130,6 +218,9 @@ class ACPHandlers:
 
         # Track permission history for debugging
         self._history: list[tuple[PermissionRequest, PermissionResult]] = []
+
+        # Track active terminals
+        self._terminals: dict[str, Terminal] = {}
 
     def handle_request_permission(self, params: dict) -> dict:
         """Handle a permission request from an agent.
@@ -514,3 +605,241 @@ class ACPHandlers:
                     "message": f"Failed to write file: {e}",
                 }
             }
+
+    # =========================================================================
+    # Terminal Operation Handlers
+    # =========================================================================
+
+    def handle_terminal_create(self, params: dict) -> dict:
+        """Handle terminal/create request from agent.
+
+        Creates a new terminal subprocess for command execution.
+
+        Args:
+            params: Request parameters with 'command' (list of strings) and
+                   optional 'cwd' (working directory).
+
+        Returns:
+            Dict with 'terminalId' on success, or 'error' on failure.
+        """
+        command = params.get("command")
+
+        if command is None:
+            return {
+                "error": {
+                    "code": -32602,
+                    "message": "Missing required parameter: command",
+                }
+            }
+
+        if not isinstance(command, list):
+            return {
+                "error": {
+                    "code": -32602,
+                    "message": "command must be a list of strings",
+                }
+            }
+
+        if len(command) == 0:
+            return {
+                "error": {
+                    "code": -32602,
+                    "message": "command list cannot be empty",
+                }
+            }
+
+        cwd = params.get("cwd")
+
+        try:
+            # Create subprocess with pipes for stdout/stderr
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=subprocess.DEVNULL,
+                cwd=cwd,
+                text=True,
+                bufsize=0,
+            )
+
+            # Generate unique terminal ID
+            terminal_id = str(uuid.uuid4())
+
+            # Create terminal instance
+            terminal = Terminal(id=terminal_id, process=process)
+            self._terminals[terminal_id] = terminal
+
+            return {"terminalId": terminal_id}
+
+        except FileNotFoundError:
+            return {
+                "error": {
+                    "code": -32001,
+                    "message": f"Command not found: {command[0]}",
+                }
+            }
+        except PermissionError:
+            return {
+                "error": {
+                    "code": -32003,
+                    "message": f"Permission denied executing: {command[0]}",
+                }
+            }
+        except OSError as e:
+            return {
+                "error": {
+                    "code": -32000,
+                    "message": f"Failed to create terminal: {e}",
+                }
+            }
+
+    def handle_terminal_output(self, params: dict) -> dict:
+        """Handle terminal/output request from agent.
+
+        Reads available output from a terminal.
+
+        Args:
+            params: Request parameters with 'terminalId'.
+
+        Returns:
+            Dict with 'output' and 'done' on success, or 'error' on failure.
+        """
+        terminal_id = params.get("terminalId")
+
+        if not terminal_id:
+            return {
+                "error": {
+                    "code": -32602,
+                    "message": "Missing required parameter: terminalId",
+                }
+            }
+
+        terminal = self._terminals.get(terminal_id)
+        if not terminal:
+            return {
+                "error": {
+                    "code": -32001,
+                    "message": f"Terminal not found: {terminal_id}",
+                }
+            }
+
+        # Read any new output
+        terminal.read_output()
+
+        return {
+            "output": terminal.output_buffer,
+            "done": not terminal.is_running,
+        }
+
+    def handle_terminal_wait_for_exit(self, params: dict) -> dict:
+        """Handle terminal/wait_for_exit request from agent.
+
+        Waits for a terminal process to exit.
+
+        Args:
+            params: Request parameters with 'terminalId' and optional 'timeout'.
+
+        Returns:
+            Dict with 'exitCode' on success, or 'error' on failure/timeout.
+        """
+        terminal_id = params.get("terminalId")
+
+        if not terminal_id:
+            return {
+                "error": {
+                    "code": -32602,
+                    "message": "Missing required parameter: terminalId",
+                }
+            }
+
+        terminal = self._terminals.get(terminal_id)
+        if not terminal:
+            return {
+                "error": {
+                    "code": -32001,
+                    "message": f"Terminal not found: {terminal_id}",
+                }
+            }
+
+        timeout = params.get("timeout")
+
+        try:
+            exit_code = terminal.wait(timeout=timeout)
+            # Read any remaining output
+            terminal.read_output()
+            return {"exitCode": exit_code}
+
+        except subprocess.TimeoutExpired:
+            return {
+                "error": {
+                    "code": -32000,
+                    "message": f"Wait timed out after {timeout}s",
+                }
+            }
+
+    def handle_terminal_kill(self, params: dict) -> dict:
+        """Handle terminal/kill request from agent.
+
+        Kills a terminal process.
+
+        Args:
+            params: Request parameters with 'terminalId'.
+
+        Returns:
+            Dict with 'success: True' on success, or 'error' on failure.
+        """
+        terminal_id = params.get("terminalId")
+
+        if not terminal_id:
+            return {
+                "error": {
+                    "code": -32602,
+                    "message": "Missing required parameter: terminalId",
+                }
+            }
+
+        terminal = self._terminals.get(terminal_id)
+        if not terminal:
+            return {
+                "error": {
+                    "code": -32001,
+                    "message": f"Terminal not found: {terminal_id}",
+                }
+            }
+
+        terminal.kill()
+        return {"success": True}
+
+    def handle_terminal_release(self, params: dict) -> dict:
+        """Handle terminal/release request from agent.
+
+        Releases terminal resources without killing the process.
+
+        Args:
+            params: Request parameters with 'terminalId'.
+
+        Returns:
+            Dict with 'success: True' on success, or 'error' on failure.
+        """
+        terminal_id = params.get("terminalId")
+
+        if not terminal_id:
+            return {
+                "error": {
+                    "code": -32602,
+                    "message": "Missing required parameter: terminalId",
+                }
+            }
+
+        terminal = self._terminals.get(terminal_id)
+        if not terminal:
+            return {
+                "error": {
+                    "code": -32001,
+                    "message": f"Terminal not found: {terminal_id}",
+                }
+            }
+
+        # Clean up the terminal
+        del self._terminals[terminal_id]
+        return {"success": True}
