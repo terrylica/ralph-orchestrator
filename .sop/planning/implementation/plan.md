@@ -3,7 +3,7 @@
 ## Implementation Checklist
 
 - [x] Step 1: Create ACPProtocol class for JSON-RPC 2.0 handling
-- [ ] Step 2: Create ACPMessage data models
+- [x] Step 2: Create ACPMessage data models
 - [ ] Step 3: Create ACPClient subprocess manager
 - [ ] Step 4: Implement basic ACPAdapter with initialize/session flow
 - [ ] Step 5: Implement session/prompt and update handling

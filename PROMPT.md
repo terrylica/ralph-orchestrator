@@ -16,7 +16,23 @@
   - Round-trip serialization tests
 - All tests pass
 
-### Next Step: Step 2 - Create ACPMessage data models
+### Step 2: ACPMessage data models (COMPLETED - Dec 13, 2025)
+- Created `src/ralph_orchestrator/adapters/acp_models.py` with:
+  - `ACPRequest`, `ACPNotification`, `ACPResponse`, `ACPError`: Core JSON-RPC message types
+  - `ACPErrorObject`: Error object structure
+  - `UpdatePayload`, `SessionUpdate`: Session update notification handling
+  - `ToolCall`: Tool execution tracking with status
+  - `ACPSession`: Session state accumulation with streaming support
+  - `ACPAdapterConfig`: Adapter configuration with permission modes
+  - All dataclasses include `from_dict()` class methods for parsing
+- Created `tests/test_acp_models.py` with 43 unit tests covering:
+  - Dataclass creation and field access
+  - `from_dict()` parsing with valid and invalid data
+  - Session state accumulation (output, thoughts, tool calls)
+  - Session update processing by kind
+- All tests pass (77 total ACP tests)
+
+### Next Step: Step 3 - Create ACPClient subprocess manager
 See `.sop/planning/implementation/plan.md` for full implementation plan.
 
 ---
