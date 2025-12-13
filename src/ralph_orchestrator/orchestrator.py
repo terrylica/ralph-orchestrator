@@ -3,26 +3,24 @@
 
 """Core orchestration loop for Ralph Orchestrator."""
 
-import os
-import sys
 import time
 import signal
 import logging
 import subprocess
 import asyncio
 from pathlib import Path
-from typing import Optional, Tuple, Dict, Any
-from dataclasses import dataclass, field
+from typing import Dict, Any
 import json
 from datetime import datetime
 
-from .adapters.base import ToolAdapter, ToolResponse
+from .adapters.base import ToolAdapter
 from .adapters.claude import ClaudeAdapter
 from .adapters.qchat import QChatAdapter
 from .adapters.gemini import GeminiAdapter
 from .metrics import Metrics, CostTracker
 from .safety import SafetyGuard
 from .context import ContextManager
+from .output import RalphConsole
 
 # Setup logging
 logging.basicConfig(
@@ -90,6 +88,7 @@ class RalphOrchestrator:
         self.cost_tracker = CostTracker() if track_costs else None
         self.safety_guard = SafetyGuard(max_iterations, max_runtime, max_cost)
         self.context_manager = ContextManager(self.prompt_file)
+        self.console = RalphConsole()  # Enhanced console output
         
         # Initialize adapters
         self.adapters = self._initialize_adapters()
@@ -184,7 +183,7 @@ class RalphOrchestrator:
 
         # Schedule emergency cleanup on the event loop (if available)
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             asyncio.create_task(self._emergency_cleanup())
         except RuntimeError:
             # No running event loop - sync cleanup handled by finally blocks
@@ -285,24 +284,35 @@ class RalphOrchestrator:
             
             # Execute iteration
             self.metrics.iterations += 1
+            self.console.print_iteration_header(self.metrics.iterations)
             logger.info(f"Starting iteration {self.metrics.iterations}")
             
             try:
                 success = await self._aexecute_iteration()
-                
+
                 if success:
                     self.metrics.successful_iterations += 1
+                    self.console.print_success(
+                        f"Iteration {self.metrics.iterations} completed successfully"
+                    )
                 else:
                     self.metrics.failed_iterations += 1
+                    self.console.print_warning(
+                        f"Iteration {self.metrics.iterations} failed"
+                    )
                     self._handle_failure()
-                
+
                 # Checkpoint if needed
                 if self.metrics.iterations % self.checkpoint_interval == 0:
                     self._create_checkpoint()
-                
+                    self.console.print_info(
+                        f"Checkpoint {self.metrics.checkpoints} created"
+                    )
+
             except Exception as e:
                 logger.error(f"Error in iteration: {e}")
                 self.metrics.errors += 1
+                self.console.print_error(f"Error in iteration: {e}")
                 self._handle_error(e)
             
             # Brief pause between iterations
@@ -472,23 +482,30 @@ class RalphOrchestrator:
         self.context_manager.reset()
     
     def _print_summary(self):
-        """Print execution summary."""
-        logger.info("=" * 50)
-        logger.info("Ralph Orchestration Summary")
-        logger.info("=" * 50)
-        logger.info(f"Total iterations: {self.metrics.iterations}")
-        logger.info(f"Successful: {self.metrics.successful_iterations}")
-        logger.info(f"Failed: {self.metrics.failed_iterations}")
-        logger.info(f"Errors: {self.metrics.errors}")
-        logger.info(f"Checkpoints: {self.metrics.checkpoints}")
-        logger.info(f"Rollbacks: {self.metrics.rollbacks}")
-        
+        """Print execution summary with enhanced console output."""
+        # Use RalphConsole for enhanced summary display
+        self.console.print_header("Ralph Orchestration Summary")
+
+        # Print stats using RalphConsole
+        self.console.print_stats(
+            iteration=self.metrics.iterations,
+            success_count=self.metrics.successful_iterations,
+            error_count=self.metrics.failed_iterations,
+            start_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            prompt_file=str(self.prompt_file),
+            recent_lines=[
+                f"Checkpoints: {self.metrics.checkpoints}",
+                f"Rollbacks: {self.metrics.rollbacks}",
+                f"Errors: {self.metrics.errors}",
+            ],
+        )
+
         if self.cost_tracker:
-            logger.info(f"Total cost: ${self.cost_tracker.total_cost:.4f}")
-            logger.info("Cost breakdown:")
+            self.console.print_info(f"Total cost: ${self.cost_tracker.total_cost:.4f}")
+            self.console.print_info("Cost breakdown:")
             for tool, cost in self.cost_tracker.costs_by_tool.items():
-                logger.info(f"  {tool}: ${cost:.4f}")
-        
+                self.console.print_info(f"  {tool}: ${cost:.4f}")
+
         # Save metrics to file
         metrics_dir = Path(".agent") / "metrics"
         metrics_dir.mkdir(parents=True, exist_ok=True)
@@ -501,15 +518,15 @@ class RalphOrchestrator:
             "checkpoints": self.metrics.checkpoints,
             "rollbacks": self.metrics.rollbacks,
         }
-        
+
         if self.cost_tracker:
             metrics_data["cost"] = {
                 "total": self.cost_tracker.total_cost,
                 "by_tool": self.cost_tracker.costs_by_tool
             }
-        
+
         metrics_file.write_text(json.dumps(metrics_data, indent=2))
-        logger.info(f"Metrics saved to {metrics_file}")
+        self.console.print_success(f"Metrics saved to {metrics_file}")
     
     def _extract_tasks_from_prompt(self, prompt: str):
         """Extract tasks from the prompt text."""

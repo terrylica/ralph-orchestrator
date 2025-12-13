@@ -26,6 +26,12 @@ except ImportError:
     Markdown = None  # type: ignore
     Syntax = None  # type: ignore
 
+# Import DiffFormatter for enhanced diff output
+try:
+    from ralph_orchestrator.output import DiffFormatter
+except ImportError:
+    DiffFormatter = None  # type: ignore
+
 
 class TextIOProxy:
     """TextIO proxy that captures Rich console output to a file."""
@@ -164,6 +170,12 @@ class VerboseLogger:
         else:
             self._console = None
             self._live_console = None
+
+        # Initialize DiffFormatter for enhanced diff output
+        if RICH_AVAILABLE and DiffFormatter and self._console:
+            self._diff_formatter: Optional[DiffFormatter] = DiffFormatter(self._console)
+        else:
+            self._diff_formatter = None
 
         self._raw_file_handle: Optional[TextIO] = None
 
@@ -444,7 +456,18 @@ class VerboseLogger:
                 if result:
                     self._print_to_file("\nResult:")
                     result_str = self._serialize_content(result)
-                    if isinstance(result_str, str) and len(result_str) > 1500:
+
+                    # Check if result is diff content and format with DiffFormatter
+                    if (
+                        isinstance(result_str, str)
+                        and self._is_diff_content(result_str)
+                        and self._diff_formatter
+                    ):
+                        self._print_to_file(
+                            "[Detected diff content - formatting with enhanced visualization]"
+                        )
+                        self._diff_formatter.format_and_print(result_str)
+                    elif isinstance(result_str, str) and len(result_str) > 1500:
                         preview = (
                             result_str[:750]
                             + "\n  ... [truncated] ...\n"
@@ -623,6 +646,34 @@ class VerboseLogger:
                 return str(content)
         except Exception:
             return f"<unserializable: {type(content).__name__}>"
+
+    def _is_diff_content(self, text: str) -> bool:
+        """
+        Check if text appears to be diff content.
+
+        Args:
+            text: Text to check
+
+        Returns:
+            True if text looks like diff output
+        """
+        if not text or not isinstance(text, str):
+            return False
+
+        lines = text.split("\n")
+        # Check first few lines for diff indicators
+        diff_indicators = [
+            any(line.startswith("diff --git") for line in lines[:5]),
+            any(line.startswith("--- ") for line in lines[:5]),
+            any(line.startswith("+++ ") for line in lines[:5]),
+            any(line.startswith("@@") for line in lines[:10]),
+            any(
+                line.startswith(("+", "-"))
+                and not line.startswith(("+++", "---"))
+                for line in lines[:10]
+            ),
+        ]
+        return any(diff_indicators)
 
     async def _write_raw_log(self, entry: Dict[str, Any]) -> None:
         """

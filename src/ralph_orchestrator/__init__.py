@@ -9,6 +9,7 @@ from .orchestrator import RalphOrchestrator
 from .metrics import Metrics, CostTracker, IterationStats
 from .error_formatter import ClaudeErrorFormatter, ErrorMessage
 from .verbose_logger import VerboseLogger
+from .output import DiffStats, DiffFormatter, RalphConsole
 
 __all__ = [
     "RalphOrchestrator",
@@ -18,4 +19,7 @@ __all__ = [
     "ClaudeErrorFormatter",
     "ErrorMessage",
     "VerboseLogger",
+    "DiffStats",
+    "DiffFormatter",
+    "RalphConsole",
 ]

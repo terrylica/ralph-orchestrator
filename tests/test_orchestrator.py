@@ -250,7 +250,7 @@ class TestRalphOrchestrator(unittest.TestCase):
         
         try:
             orchestrator = RalphOrchestrator(
-                prompt_file=prompt_file,
+                prompt_file_or_config=prompt_file,
                 primary_tool="claude",
                 max_iterations=10
             )
