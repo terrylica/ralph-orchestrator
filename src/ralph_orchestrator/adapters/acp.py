@@ -278,8 +278,9 @@ class ACPAdapter(ToolAdapter):
     async def _execute_prompt(self, prompt: str, **kwargs) -> ToolResponse:
         """Execute a prompt through the ACP agent.
 
-        This is a placeholder implementation for Step 4.
-        Full implementation will be in Step 5.
+        Sends session/prompt request with messages array and waits for response.
+        Session updates (streaming output, thoughts, tool calls) are processed
+        through _handle_notification during the request.
 
         Args:
             prompt: The prompt to execute.
@@ -288,17 +289,69 @@ class ACPAdapter(ToolAdapter):
         Returns:
             ToolResponse with execution result.
         """
-        # This is a placeholder - full implementation in Step 5
-        # For now, just return success to pass basic tests
-        return ToolResponse(
-            success=True,
-            output=f"ACP adapter initialized with session {self._session_id}",
-            metadata={
-                "tool": "acp",
-                "agent": self.agent_command,
-                "session_id": self._session_id,
-            },
-        )
+        # Reset session state for new prompt (preserve session_id)
+        if self._session:
+            self._session.reset()
+
+        # Build messages array for ACP protocol
+        messages = [{"role": "user", "content": prompt}]
+
+        # Send session/prompt request
+        try:
+            prompt_future = self._client.send_request(
+                "session/prompt",
+                {
+                    "sessionId": self._session_id,
+                    "messages": messages,
+                },
+            )
+
+            # Wait for response with timeout
+            response = await asyncio.wait_for(prompt_future, timeout=self.timeout)
+
+            # Check for error stop reason
+            stop_reason = response.get("stopReason", "unknown")
+            if stop_reason == "error":
+                error_obj = response.get("error", {})
+                error_msg = error_obj.get("message", "Unknown error from agent")
+                return ToolResponse(
+                    success=False,
+                    output=self._session.output if self._session else "",
+                    error=error_msg,
+                    metadata={
+                        "tool": "acp",
+                        "agent": self.agent_command,
+                        "session_id": self._session_id,
+                        "stop_reason": stop_reason,
+                    },
+                )
+
+            # Build successful response
+            output = self._session.output if self._session else ""
+            return ToolResponse(
+                success=True,
+                output=output,
+                metadata={
+                    "tool": "acp",
+                    "agent": self.agent_command,
+                    "session_id": self._session_id,
+                    "stop_reason": stop_reason,
+                    "tool_calls_count": len(self._session.tool_calls) if self._session else 0,
+                    "has_thoughts": bool(self._session.thoughts) if self._session else False,
+                },
+            )
+
+        except asyncio.TimeoutError:
+            return ToolResponse(
+                success=False,
+                output=self._session.output if self._session else "",
+                error=f"Prompt execution timed out after {self.timeout} seconds",
+                metadata={
+                    "tool": "acp",
+                    "agent": self.agent_command,
+                    "session_id": self._session_id,
+                },
+            )
 
     async def _shutdown(self) -> None:
         """Shutdown the ACP connection.

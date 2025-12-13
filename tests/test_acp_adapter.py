@@ -345,3 +345,436 @@ class TestACPAdapterMetadata:
         cost = adapter.estimate_cost("test prompt")
 
         assert cost == 0.0
+
+
+class TestACPAdapterPromptExecution:
+    """Tests for session/prompt execution and streaming updates (Step 5)."""
+
+    def _create_mock_client_for_prompt(
+        self,
+        prompt_response: dict,
+        updates: list[dict] | None = None,
+    ):
+        """Helper to create ACPClient mock for prompt execution.
+
+        Args:
+            prompt_response: Response for session/prompt request.
+            updates: List of session/update notifications to simulate.
+        """
+        mock_client = MagicMock()
+        mock_client.is_running = True
+        mock_client.start = AsyncMock()
+        mock_client.stop = AsyncMock()
+
+        # Store the notification handler when registered
+        notification_handler = None
+
+        def capture_notification_handler(handler):
+            nonlocal notification_handler
+            notification_handler = handler
+
+        mock_client.on_notification = MagicMock(side_effect=capture_notification_handler)
+        mock_client.on_request = MagicMock()
+
+        # Create future for prompt request
+        prompt_future = asyncio.Future()
+        prompt_future.set_result(prompt_response)
+        mock_client.send_request = MagicMock(return_value=prompt_future)
+
+        # Store updates and handler for later simulation
+        mock_client._notification_handler = lambda: notification_handler
+        mock_client._updates = updates or []
+
+        return mock_client
+
+    @pytest.mark.asyncio
+    async def test_execute_prompt_sends_session_prompt(self):
+        """Test _execute_prompt sends session/prompt request."""
+        adapter = ACPAdapter()
+        adapter.available = True
+        adapter._initialized = True
+        adapter._session_id = "test-session"
+
+        mock_client = MagicMock()
+        mock_client.is_running = True
+
+        prompt_future = asyncio.Future()
+        prompt_future.set_result({"stopReason": "end_turn"})
+        mock_client.send_request = MagicMock(return_value=prompt_future)
+
+        adapter._client = mock_client
+        from ralph_orchestrator.adapters.acp_models import ACPSession
+        adapter._session = ACPSession(session_id="test-session")
+
+        await adapter._execute_prompt("Test prompt")
+
+        # Verify session/prompt was called
+        mock_client.send_request.assert_called_once()
+        call_args = mock_client.send_request.call_args
+        assert call_args[0][0] == "session/prompt"
+        assert "messages" in call_args[0][1]
+
+    @pytest.mark.asyncio
+    async def test_execute_prompt_returns_tool_response(self):
+        """Test _execute_prompt returns ToolResponse with output."""
+        adapter = ACPAdapter()
+        adapter.available = True
+        adapter._initialized = True
+        adapter._session_id = "test-session"
+
+        mock_client = MagicMock()
+        mock_client.is_running = True
+
+        from ralph_orchestrator.adapters.acp_models import ACPSession
+        adapter._session = ACPSession(session_id="test-session")
+        adapter._client = mock_client
+
+        # Create a future that simulates notifications arriving during execution
+        async def simulate_prompt_with_output():
+            # Simulate notification arriving during prompt execution
+            adapter._handle_notification(
+                "session/update",
+                {"kind": "agent_message_chunk", "content": "Hello, I'm the agent response."},
+            )
+            return {"stopReason": "end_turn"}
+
+        mock_client.send_request = MagicMock(
+            return_value=asyncio.ensure_future(simulate_prompt_with_output())
+        )
+
+        response = await adapter._execute_prompt("Test prompt")
+
+        assert response.success is True
+        assert "Hello, I'm the agent response." in response.output
+        assert response.metadata.get("tool") == "acp"
+        assert response.metadata.get("stop_reason") == "end_turn"
+
+    @pytest.mark.asyncio
+    async def test_execute_prompt_accumulates_streaming_chunks(self):
+        """Test _execute_prompt accumulates output from session/update notifications."""
+        adapter = ACPAdapter()
+        adapter.available = True
+        adapter._initialized = True
+        adapter._session_id = "test-session"
+
+        mock_client = MagicMock()
+        mock_client.is_running = True
+
+        from ralph_orchestrator.adapters.acp_models import ACPSession
+        adapter._session = ACPSession(session_id="test-session")
+        adapter._client = mock_client
+
+        # Create a future that simulates streaming notifications during execution
+        async def simulate_streaming_chunks():
+            adapter._handle_notification(
+                "session/update",
+                {"kind": "agent_message_chunk", "content": "Hello "},
+            )
+            adapter._handle_notification(
+                "session/update",
+                {"kind": "agent_message_chunk", "content": "World!"},
+            )
+            return {"stopReason": "end_turn"}
+
+        mock_client.send_request = MagicMock(
+            return_value=asyncio.ensure_future(simulate_streaming_chunks())
+        )
+
+        response = await adapter._execute_prompt("Test prompt")
+
+        assert response.success is True
+        assert adapter._session.output == "Hello World!"
+        assert "Hello World!" in response.output
+
+    @pytest.mark.asyncio
+    async def test_execute_prompt_handles_thought_chunks(self):
+        """Test _execute_prompt accumulates thought chunks for verbose logging."""
+        adapter = ACPAdapter()
+        adapter.available = True
+        adapter._initialized = True
+        adapter._session_id = "test-session"
+
+        mock_client = MagicMock()
+        mock_client.is_running = True
+
+        from ralph_orchestrator.adapters.acp_models import ACPSession
+        adapter._session = ACPSession(session_id="test-session")
+        adapter._client = mock_client
+
+        # Simulate thought chunks during execution
+        async def simulate_thought_chunks():
+            adapter._handle_notification(
+                "session/update",
+                {"kind": "agent_thought_chunk", "content": "I should first..."},
+            )
+            adapter._handle_notification(
+                "session/update",
+                {"kind": "agent_thought_chunk", "content": " analyze the request."},
+            )
+            return {"stopReason": "end_turn"}
+
+        mock_client.send_request = MagicMock(
+            return_value=asyncio.ensure_future(simulate_thought_chunks())
+        )
+
+        await adapter._execute_prompt("Test prompt")
+
+        assert adapter._session.thoughts == "I should first... analyze the request."
+
+    @pytest.mark.asyncio
+    async def test_execute_prompt_tracks_tool_calls(self):
+        """Test _execute_prompt tracks tool_call notifications."""
+        adapter = ACPAdapter()
+        adapter.available = True
+        adapter._initialized = True
+        adapter._session_id = "test-session"
+
+        mock_client = MagicMock()
+        mock_client.is_running = True
+
+        from ralph_orchestrator.adapters.acp_models import ACPSession
+        adapter._session = ACPSession(session_id="test-session")
+        adapter._client = mock_client
+
+        # Simulate tool call during execution
+        async def simulate_tool_call():
+            adapter._handle_notification(
+                "session/update",
+                {
+                    "kind": "tool_call",
+                    "toolName": "fs/read_text_file",
+                    "toolCallId": "tc-123",
+                    "arguments": {"path": "/test/file.txt"},
+                },
+            )
+            return {"stopReason": "end_turn"}
+
+        mock_client.send_request = MagicMock(
+            return_value=asyncio.ensure_future(simulate_tool_call())
+        )
+
+        await adapter._execute_prompt("Test prompt")
+
+        assert len(adapter._session.tool_calls) == 1
+        assert adapter._session.tool_calls[0].tool_name == "fs/read_text_file"
+        assert adapter._session.tool_calls[0].tool_call_id == "tc-123"
+
+    @pytest.mark.asyncio
+    async def test_execute_prompt_tracks_tool_call_updates(self):
+        """Test _execute_prompt tracks tool_call_update notifications."""
+        adapter = ACPAdapter()
+        adapter.available = True
+        adapter._initialized = True
+        adapter._session_id = "test-session"
+
+        mock_client = MagicMock()
+        mock_client.is_running = True
+
+        from ralph_orchestrator.adapters.acp_models import ACPSession
+        adapter._session = ACPSession(session_id="test-session")
+        adapter._client = mock_client
+
+        # Simulate tool call followed by update during execution
+        async def simulate_tool_call_with_update():
+            adapter._handle_notification(
+                "session/update",
+                {
+                    "kind": "tool_call",
+                    "toolName": "bash",
+                    "toolCallId": "tc-456",
+                    "arguments": {"command": "ls"},
+                },
+            )
+            adapter._handle_notification(
+                "session/update",
+                {
+                    "kind": "tool_call_update",
+                    "toolCallId": "tc-456",
+                    "status": "completed",
+                    "result": {"output": "file.txt"},
+                },
+            )
+            return {"stopReason": "end_turn"}
+
+        mock_client.send_request = MagicMock(
+            return_value=asyncio.ensure_future(simulate_tool_call_with_update())
+        )
+
+        await adapter._execute_prompt("Test prompt")
+
+        tool_call = adapter._session.get_tool_call("tc-456")
+        assert tool_call.status == "completed"
+        assert tool_call.result == {"output": "file.txt"}
+
+    @pytest.mark.asyncio
+    async def test_execute_prompt_resets_session_state(self):
+        """Test _execute_prompt resets session state before new prompt."""
+        adapter = ACPAdapter()
+        adapter.available = True
+        adapter._initialized = True
+        adapter._session_id = "test-session"
+
+        mock_client = MagicMock()
+        mock_client.is_running = True
+
+        prompt_future = asyncio.Future()
+        prompt_future.set_result({"stopReason": "end_turn"})
+        mock_client.send_request = MagicMock(return_value=prompt_future)
+
+        adapter._client = mock_client
+        from ralph_orchestrator.adapters.acp_models import ACPSession
+        adapter._session = ACPSession(session_id="test-session")
+        adapter._session.output = "Previous output"
+        adapter._session.thoughts = "Previous thoughts"
+
+        await adapter._execute_prompt("New prompt")
+
+        # Session should start fresh (but note: output builds up during prompt)
+        # The reset happens at the START of _execute_prompt
+        assert adapter._session.session_id == "test-session"
+
+    @pytest.mark.asyncio
+    async def test_execute_prompt_includes_tool_calls_in_metadata(self):
+        """Test _execute_prompt includes tool_calls count in metadata."""
+        adapter = ACPAdapter()
+        adapter.available = True
+        adapter._initialized = True
+        adapter._session_id = "test-session"
+
+        mock_client = MagicMock()
+        mock_client.is_running = True
+
+        from ralph_orchestrator.adapters.acp_models import ACPSession
+        adapter._session = ACPSession(session_id="test-session")
+        adapter._client = mock_client
+
+        # Simulate multiple tool calls during execution
+        async def simulate_multiple_tool_calls():
+            for i in range(3):
+                adapter._handle_notification(
+                    "session/update",
+                    {
+                        "kind": "tool_call",
+                        "toolName": f"tool_{i}",
+                        "toolCallId": f"tc-{i}",
+                        "arguments": {},
+                    },
+                )
+            return {"stopReason": "end_turn"}
+
+        mock_client.send_request = MagicMock(
+            return_value=asyncio.ensure_future(simulate_multiple_tool_calls())
+        )
+
+        response = await adapter._execute_prompt("Test prompt")
+
+        assert response.metadata.get("tool_calls_count") == 3
+
+    @pytest.mark.asyncio
+    async def test_execute_prompt_handles_error_stop_reason(self):
+        """Test _execute_prompt handles error stop_reason from agent."""
+        adapter = ACPAdapter()
+        adapter.available = True
+        adapter._initialized = True
+        adapter._session_id = "test-session"
+
+        mock_client = MagicMock()
+        mock_client.is_running = True
+
+        prompt_future = asyncio.Future()
+        prompt_future.set_result({
+            "stopReason": "error",
+            "error": {"message": "Something went wrong"},
+        })
+        mock_client.send_request = MagicMock(return_value=prompt_future)
+
+        adapter._client = mock_client
+        from ralph_orchestrator.adapters.acp_models import ACPSession
+        adapter._session = ACPSession(session_id="test-session")
+
+        response = await adapter._execute_prompt("Test prompt")
+
+        assert response.success is False
+        assert "Something went wrong" in response.error
+
+    @pytest.mark.asyncio
+    async def test_execute_prompt_handles_timeout(self):
+        """Test _execute_prompt handles timeout gracefully."""
+        adapter = ACPAdapter()
+        adapter.available = True
+        adapter._initialized = True
+        adapter._session_id = "test-session"
+        adapter.timeout = 0.01  # Very short timeout
+
+        mock_client = MagicMock()
+        mock_client.is_running = True
+
+        # Create a future that never resolves
+        prompt_future = asyncio.Future()
+        mock_client.send_request = MagicMock(return_value=prompt_future)
+
+        adapter._client = mock_client
+        from ralph_orchestrator.adapters.acp_models import ACPSession
+        adapter._session = ACPSession(session_id="test-session")
+
+        response = await adapter._execute_prompt("Test prompt")
+
+        assert response.success is False
+        assert "timed out" in response.error.lower()
+
+    @pytest.mark.asyncio
+    async def test_execute_prompt_formats_messages_array(self):
+        """Test _execute_prompt sends properly formatted messages array."""
+        adapter = ACPAdapter()
+        adapter.available = True
+        adapter._initialized = True
+        adapter._session_id = "test-session"
+
+        mock_client = MagicMock()
+        mock_client.is_running = True
+
+        prompt_future = asyncio.Future()
+        prompt_future.set_result({"stopReason": "end_turn"})
+        mock_client.send_request = MagicMock(return_value=prompt_future)
+
+        adapter._client = mock_client
+        from ralph_orchestrator.adapters.acp_models import ACPSession
+        adapter._session = ACPSession(session_id="test-session")
+
+        await adapter._execute_prompt("User prompt content")
+
+        call_args = mock_client.send_request.call_args
+        params = call_args[0][1]
+
+        # Verify messages format
+        assert "messages" in params
+        messages = params["messages"]
+        assert len(messages) == 1
+        assert messages[0]["role"] == "user"
+        assert messages[0]["content"] == "User prompt content"
+
+    @pytest.mark.asyncio
+    async def test_execute_prompt_includes_session_id(self):
+        """Test _execute_prompt includes session_id in request."""
+        adapter = ACPAdapter()
+        adapter.available = True
+        adapter._initialized = True
+        adapter._session_id = "my-session-123"
+
+        mock_client = MagicMock()
+        mock_client.is_running = True
+
+        prompt_future = asyncio.Future()
+        prompt_future.set_result({"stopReason": "end_turn"})
+        mock_client.send_request = MagicMock(return_value=prompt_future)
+
+        adapter._client = mock_client
+        from ralph_orchestrator.adapters.acp_models import ACPSession
+        adapter._session = ACPSession(session_id="my-session-123")
+
+        await adapter._execute_prompt("Test")
+
+        call_args = mock_client.send_request.call_args
+        params = call_args[0][1]
+
+        assert params.get("sessionId") == "my-session-123"
