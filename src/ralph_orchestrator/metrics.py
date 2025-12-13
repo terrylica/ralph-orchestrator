@@ -68,6 +68,10 @@ class CostTracker:
             "input": 0.0,      # Free/local
             "output": 0.0
         },
+        "acp": {
+            "input": 0.0,      # ACP doesn't provide billing info
+            "output": 0.0      # Cost depends on underlying agent
+        },
         "gpt-4": {
             "input": 0.03,     # $30 per 1M input tokens
             "output": 0.06     # $60 per 1M output tokens

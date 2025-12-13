@@ -277,7 +277,22 @@
   - 8 integration tests properly skipped when GOOGLE_API_KEY not set
   - 285 total ACP tests passing
 
-**Next iteration**: Step 12 - Final integration with orchestrator loop.
+### Step 12: Final integration with orchestrator loop (COMPLETED - Dec 13, 2025)
+- Added "acp" to CostTracker.COSTS dictionary (free tier, as ACP doesn't provide billing):
+  - Input: $0.00 (billing depends on underlying agent)
+  - Output: $0.00 (billing depends on underlying agent)
+- Created `tests/test_acp_orchestrator.py` with 20 tests covering:
+  - **TestACPCostTracking** (4 tests): Cost tracker ACP entry, zero cost, usage recording
+  - **TestACPMetricsRecording** (4 tests): Metrics increment, checkpoint tracking, serialization
+  - **TestACPCheckpointing** (2 tests): Interval calculation, response serialization
+  - **TestACPMultiIteration** (2 tests): Session persistence, reinit after shutdown
+  - **TestACPGracefulShutdown** (4 tests): Signal safety, shutdown cleanup
+  - **TestACPOrchestratorIntegration** (4 tests): Interface compliance, response format
+- Test execution:
+  - 305 total ACP tests passing
+  - 8 integration tests properly skipped (GOOGLE_API_KEY not set)
+
+**ACP Implementation Complete!** All 12 steps finished. Ready for documentation update.
 
 ---
 
