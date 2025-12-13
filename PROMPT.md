@@ -53,7 +53,64 @@
   - Thread-safe write locking
 - All tests pass (102 total ACP tests)
 
-### Next Step: Step 4 - Implement basic ACPAdapter with initialize/session flow
+### Step 4: ACPAdapter with initialize/session flow (COMPLETED - Dec 13, 2025)
+- Created `src/ralph_orchestrator/adapters/acp.py` with:
+  - `ACPAdapter` class extending `ToolAdapter` base class
+  - `__init__()` accepting agent_command, agent_args, timeout, permission_mode
+  - `from_config()` factory method for `ACPAdapterConfig` integration
+  - `check_availability()` using `shutil.which()` to verify agent command
+  - `_initialize()` async method with full ACP handshake:
+    1. Start ACPClient subprocess
+    2. Send `initialize` request with protocol version and capabilities
+    3. Receive and validate initialize response
+    4. Send `session/new` request
+    5. Store session_id and create ACPSession state tracker
+  - `_handle_notification()` for session/update messages
+  - `_handle_request()` for incoming requests from agent
+  - `_handle_permission_request()` with basic permission modes (auto_approve, deny_all)
+  - `execute()` sync wrapper using `asyncio.run()`
+  - `aexecute()` async with initialization and prompt enhancement
+  - Signal handlers for graceful shutdown (SIGINT, SIGTERM)
+  - `kill_subprocess_sync()` for signal-safe subprocess termination
+  - `_shutdown()` async cleanup method
+- Created `tests/test_acp_adapter.py` with 24 unit tests covering:
+  - Initialization with defaults and custom values
+  - `from_config()` factory method
+  - Availability check with mocked shutil.which
+  - Initialize sequence with mocked ACPClient
+  - Idempotent initialization behavior
+  - Execute when unavailable (error handling)
+  - Async execute flow with initialization
+  - Prompt enhancement with orchestration context
+  - Signal handler registration
+  - Shutdown and subprocess cleanup
+- Updated `src/ralph_orchestrator/adapters/__init__.py` to export `ACPAdapter`
+- All tests pass (126 total ACP tests, 143 including adapter tests)
+
+### Step 5: session/prompt and streaming update handling (COMPLETED - Dec 13, 2025)
+- Updated `src/ralph_orchestrator/adapters/acp.py`:
+  - Full `_execute_prompt()` implementation:
+    1. Reset session state before each new prompt
+    2. Build messages array with user role and content
+    3. Send `session/prompt` request with sessionId and messages
+    4. Wait for response with timeout handling
+    5. Check for error stop_reason and build error response
+    6. Build ToolResponse with accumulated output and metadata
+  - Streaming update accumulation via `_handle_notification()`:
+    - `agent_message_chunk` → append to session output
+    - `agent_thought_chunk` → append to session thoughts
+    - `tool_call` → track new tool call
+    - `tool_call_update` → update tool call status/result
+  - Metadata includes: tool, agent, session_id, stop_reason, tool_calls_count, has_thoughts
+  - Timeout handling with informative error message
+- Added 12 new tests in `tests/test_acp_adapter.py`:
+  - Tests use async simulations to mock streaming during execution
+  - Covers: prompt sending, response building, streaming chunks, thought chunks
+  - Covers: tool call tracking, tool call updates, session reset, metadata
+  - Covers: error stop_reason handling, timeout handling, message formatting
+- All tests pass (155 total adapter/ACP tests)
+
+### Next Step: Step 6 - Implement permission handler
 See `.sop/planning/implementation/plan.md` for full implementation plan.
 
 ---
