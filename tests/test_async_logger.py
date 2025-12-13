@@ -718,18 +718,24 @@ class TestAsyncLoggerStderrFailure:
 
         This tests the silent fallback at async_logger.py:323-325.
         """
+        from unittest.mock import MagicMock
+
         with tempfile.TemporaryDirectory() as tmpdir:
             log_path = Path(tmpdir) / "test.log"
             logger = AsyncFileLogger(str(log_path))
 
             # Mock _write_to_file to raise OSError
-            # Mock sys.stderr.write to raise IOError
+            # Mock sys.stderr.write to raise IOError (must use MagicMock for write)
+            mock_stderr = MagicMock()
+            mock_stderr.write.side_effect = IOError("Broken pipe")
+
             with patch.object(logger, '_write_to_file', side_effect=OSError("Disk full")):
-                with patch('sys.stderr', side_effect=IOError("Broken pipe")):
+                with patch('sys.stderr', mock_stderr):
                     # Should not raise - silently ignores
                     logger.log_info_sync("Test message")
 
-            # If we got here without exception, test passes
+            # Verify stderr.write was attempted (fallback was triggered)
+            assert mock_stderr.write.called, "stderr fallback should have been attempted"
 
 
 class TestSyncMethodsBehavior:
