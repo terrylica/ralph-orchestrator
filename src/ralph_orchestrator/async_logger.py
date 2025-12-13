@@ -104,6 +104,8 @@ class AsyncFileLogger:
         self._emergency_shutdown = False
         # Threading event for immediate signal-safe notification
         self._emergency_event = threading.Event()
+        # Track logging failures when both file and stderr fail
+        self._logging_failures_count = 0
 
         # Ensure log directory exists
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
@@ -247,6 +249,16 @@ class AsyncFileLogger:
                     backup.unlink()
                 shutil.move(str(temp_backup), str(backup))
 
+                # Clean up any backups beyond MAX_BACKUP_FILES
+                i = self.MAX_BACKUP_FILES + 1
+                while True:
+                    old_backup = self.log_file.with_suffix(f".log.{i}")
+                    if old_backup.exists():
+                        old_backup.unlink()
+                        i += 1
+                    else:
+                        break
+
             except (OSError, IOError):
                 # If rotation fails, try to restore from temporary backup
                 if temp_backup.exists() and not self.log_file.exists():
@@ -322,8 +334,9 @@ class AsyncFileLogger:
                     file=sys.stderr
                 )
             except Exception:
-                # If stderr also fails, silently ignore to prevent cascading failures
-                pass
+                # If stderr also fails, track the failure count for diagnostics
+                # Cannot log or print - just increment counter
+                self._logging_failures_count += 1
 
     def log_info_sync(self, message: str) -> None:
         """Log info message synchronously (thread-safe)."""

@@ -333,7 +333,13 @@ class TestAsyncFileLoggerRotation:
             await logger.log("INFO", "Trigger rotation")
 
             # Verify max backups (3)
-            # .log.1, .log.2, .log.3 should exist, .log.4 and beyond might be rotated out
+            # After rotation, .log.1, .log.2, .log.3 should exist
+            assert log_path.with_suffix(".log.1").exists(), "Backup .log.1 should exist"
+            assert log_path.with_suffix(".log.2").exists(), "Backup .log.2 should exist"
+            assert log_path.with_suffix(".log.3").exists(), "Backup .log.3 should exist"
+            # .log.4 and .log.5 should be rotated out (only 3 backups kept)
+            assert not log_path.with_suffix(".log.4").exists(), "Backup .log.4 should be rotated out"
+            assert not log_path.with_suffix(".log.5").exists(), "Backup .log.5 should be rotated out"
 
 
 class TestAsyncFileLoggerStats:

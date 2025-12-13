@@ -6,7 +6,6 @@
 import time
 import signal
 import logging
-import subprocess
 import asyncio
 from pathlib import Path
 from typing import Dict, Any
@@ -206,9 +205,9 @@ class RalphOrchestrator:
                         timeout=0.5
                     )
                 except asyncio.TimeoutError:
-                    pass  # Continue even if cleanup times out
-        except Exception:
-            pass  # Ignore errors during emergency cleanup
+                    logger.debug("Cleanup transport timed out during emergency shutdown")
+        except Exception as e:
+            logger.debug(f"Error during emergency cleanup (ignored): {type(e).__name__}: {e}")
     
     def run(self) -> None:
         """Run the main orchestration loop."""
@@ -302,11 +301,11 @@ class RalphOrchestrator:
                     self.console.print_warning(
                         f"Iteration {self.metrics.iterations} failed"
                     )
-                    self._handle_failure()
+                    await self._handle_failure()
 
                 # Checkpoint if needed
                 if self.metrics.iterations % self.checkpoint_interval == 0:
-                    self._create_checkpoint()
+                    await self._create_checkpoint()
                     self.console.print_info(
                         f"Checkpoint {self.metrics.checkpoints} created"
                     )
@@ -405,18 +404,18 @@ class RalphOrchestrator:
         # Rough estimate: 1 token per 4 characters
         return len(text) // 4
     
-    def _handle_failure(self):
-        """Handle iteration failure."""
+    async def _handle_failure(self):
+        """Handle iteration failure asynchronously."""
         logger.warning("Iteration failed, attempting recovery")
-        
-        # Simple exponential backoff
+
+        # Simple exponential backoff (non-blocking)
         backoff = min(2 ** self.metrics.failed_iterations, 60)
-        logger.info(f"Backing off for {backoff} seconds")
-        time.sleep(backoff)
-        
+        logger.debug(f"Backing off for {backoff} seconds")
+        await asyncio.sleep(backoff)
+
         # Consider rollback after multiple failures
         if self.metrics.failed_iterations > 3:
-            self._rollback_checkpoint()
+            await self._rollback_checkpoint()
     
     def _handle_error(self, error: Exception):
         """Handle iteration error."""
@@ -430,35 +429,52 @@ class RalphOrchestrator:
             logger.info("Too many errors, resetting state")
             self._reset_state()
     
-    def _create_checkpoint(self):
-        """Create a git checkpoint."""
+    async def _create_checkpoint(self):
+        """Create a git checkpoint asynchronously."""
         try:
-            subprocess.run(
-                ["git", "add", "-A"],
-                check=True,
-                capture_output=True
+            # Stage all changes
+            proc = await asyncio.create_subprocess_exec(
+                "git", "add", "-A",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
             )
-            subprocess.run(
-                ["git", "commit", "-m", f"Ralph checkpoint {self.metrics.iterations}"],
-                check=True,
-                capture_output=True
+            _, stderr = await proc.communicate()
+            if proc.returncode != 0:
+                logger.warning(f"Failed to stage changes: {stderr.decode()}")
+                return
+
+            # Commit
+            proc = await asyncio.create_subprocess_exec(
+                "git", "commit", "-m", f"Ralph checkpoint {self.metrics.iterations}",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
             )
+            _, stderr = await proc.communicate()
+            if proc.returncode != 0:
+                logger.warning(f"Failed to create checkpoint: {stderr.decode()}")
+                return
+
             self.metrics.checkpoints += 1
-            logger.info(f"Created checkpoint {self.metrics.checkpoints}")
-        except subprocess.CalledProcessError as e:
+            logger.debug(f"Created checkpoint {self.metrics.checkpoints}")
+        except Exception as e:
             logger.warning(f"Failed to create checkpoint: {e}")
     
-    def _rollback_checkpoint(self):
-        """Rollback to previous checkpoint."""
+    async def _rollback_checkpoint(self):
+        """Rollback to previous checkpoint asynchronously."""
         try:
-            subprocess.run(
-                ["git", "reset", "--hard", "HEAD~1"],
-                check=True,
-                capture_output=True
+            proc = await asyncio.create_subprocess_exec(
+                "git", "reset", "--hard", "HEAD~1",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
             )
-            logger.info("Rolled back to previous checkpoint")
+            _, stderr = await proc.communicate()
+            if proc.returncode != 0:
+                logger.error(f"Failed to rollback: {stderr.decode()}")
+                return
+
+            logger.debug("Rolled back to previous checkpoint")
             self.metrics.rollbacks += 1
-        except subprocess.CalledProcessError as e:
+        except Exception as e:
             logger.error(f"Failed to rollback: {e}")
     
     def _archive_prompt(self):

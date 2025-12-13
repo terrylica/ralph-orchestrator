@@ -304,8 +304,8 @@ class QChatAdapter(ToolAdapter):
                     # Small sleep to prevent busy waiting
                     time.sleep(0.01)
                     
-                except IOError:
-                    # Non-blocking read, ignore would-block errors
+                except BlockingIOError:
+                    # Non-blocking read returns BlockingIOError when no data available
                     pass
             
             # Get final return code
@@ -542,5 +542,7 @@ class QChatAdapter(ToolAdapter):
                 else:
                     # Async process - can't do much in __del__
                     pass
-            except:
-                pass
+            except Exception as e:
+                # Best-effort cleanup during interpreter shutdown
+                # Log at debug level since __del__ is unreliable
+                logger.debug(f"Cleanup warning in __del__: {type(e).__name__}: {e}")

@@ -128,7 +128,7 @@ class ContextManager:
         # Strategy 1: Use stable prefix caching
         if self.stable_prefix:
             # Cache the stable prefix
-            prefix_hash = hashlib.md5(self.stable_prefix.encode()).hexdigest()[:8]
+            prefix_hash = hashlib.sha256(self.stable_prefix.encode()).hexdigest()[:8]
             cache_file = self.cache_dir / f"prefix_{prefix_hash}.txt"
             
             if not cache_file.exists():
