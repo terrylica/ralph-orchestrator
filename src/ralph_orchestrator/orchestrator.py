@@ -63,6 +63,7 @@ class RalphOrchestrator:
             # It's a config object
             config = prompt_file_or_config
             self.prompt_file = Path(config.prompt_file)
+            self.prompt_text = getattr(config, 'prompt_text', None)
             self.primary_tool = config.agent.value if hasattr(config.agent, 'value') else str(config.agent)
             self.max_iterations = config.max_iterations
             self.max_runtime = config.max_runtime
@@ -74,6 +75,7 @@ class RalphOrchestrator:
         else:
             # Individual parameters
             self.prompt_file = Path(prompt_file_or_config if prompt_file_or_config else "PROMPT.md")
+            self.prompt_text = None
             self.primary_tool = primary_tool
             self.max_iterations = max_iterations
             self.max_runtime = max_runtime
@@ -87,7 +89,7 @@ class RalphOrchestrator:
         self.metrics = Metrics()
         self.cost_tracker = CostTracker() if track_costs else None
         self.safety_guard = SafetyGuard(max_iterations, max_runtime, max_cost)
-        self.context_manager = ContextManager(self.prompt_file)
+        self.context_manager = ContextManager(self.prompt_file, prompt_text=self.prompt_text)
         self.console = RalphConsole()  # Enhanced console output
         
         # Initialize adapters

@@ -200,6 +200,7 @@ class RalphConfig:
     # Core configuration fields
     agent: AgentType = AgentType.AUTO
     prompt_file: str = DEFAULT_PROMPT_FILE
+    prompt_text: Optional[str] = None  # Direct prompt text (overrides prompt_file)
     max_iterations: int = DEFAULT_MAX_ITERATIONS
     max_runtime: int = DEFAULT_MAX_RUNTIME
     checkpoint_interval: int = DEFAULT_CHECKPOINT_INTERVAL
@@ -380,10 +381,18 @@ def main():
     )
     
     parser.add_argument(
-        "--prompt", "-p",
+        "--prompt-file", "-P",
         type=str,
         default=DEFAULT_PROMPT_FILE,
+        dest="prompt",
         help="Prompt file path (default: PROMPT.md)"
+    )
+
+    parser.add_argument(
+        "--prompt-text", "-p",
+        type=str,
+        default=None,
+        help="Direct prompt text (overrides --prompt-file)"
     )
     
     parser.add_argument(
@@ -508,6 +517,7 @@ def main():
     config = RalphConfig(
         agent=AgentType(args.agent),
         prompt_file=args.prompt,
+        prompt_text=args.prompt_text,
         max_iterations=args.max_iterations,
         max_runtime=args.max_runtime,
         checkpoint_interval=args.checkpoint_interval,

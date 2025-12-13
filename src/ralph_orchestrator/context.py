@@ -14,41 +14,47 @@ logger = logging.getLogger('ralph-orchestrator.context')
 
 class ContextManager:
     """Manage prompt context and optimization."""
-    
+
     def __init__(
         self,
         prompt_file: Path,
         max_context_size: int = 8000,
-        cache_dir: Path = Path(".agent/cache")
+        cache_dir: Path = Path(".agent/cache"),
+        prompt_text: Optional[str] = None
     ):
         """Initialize context manager.
-        
+
         Args:
             prompt_file: Path to the main prompt file
             max_context_size: Maximum context size in characters
             cache_dir: Directory for caching context
+            prompt_text: Direct prompt text (overrides prompt_file if provided)
         """
         self.prompt_file = prompt_file
         self.max_context_size = max_context_size
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        
+        self.prompt_text = prompt_text  # Direct prompt text override
+
         # Context components
         self.stable_prefix: Optional[str] = None
         self.dynamic_context: List[str] = []
         self.error_history: List[str] = []
         self.success_patterns: List[str] = []
-        
+
         # Load initial prompt
         self._load_initial_prompt()
     
     def _load_initial_prompt(self):
         """Load and analyze the initial prompt."""
-        if not self.prompt_file.exists():
+        # Use direct prompt text if provided
+        if self.prompt_text:
+            content = self.prompt_text
+        elif self.prompt_file.exists():
+            content = self.prompt_file.read_text()
+        else:
             logger.warning(f"Prompt file {self.prompt_file} not found")
             return
-        
-        content = self.prompt_file.read_text()
         
         # Extract stable prefix (instructions that don't change)
         lines = content.split('\n')
@@ -68,10 +74,13 @@ class ContextManager:
     
     def get_prompt(self) -> str:
         """Get the current prompt with optimizations."""
-        if not self.prompt_file.exists():
+        # Use direct prompt text if provided
+        if self.prompt_text:
+            base_content = self.prompt_text
+        elif self.prompt_file.exists():
+            base_content = self.prompt_file.read_text()
+        else:
             return ""
-        
-        base_content = self.prompt_file.read_text()
         
         # Check if we need to optimize
         if len(base_content) > self.max_context_size:

@@ -438,3 +438,60 @@ class TestRalphConfigValidation:
 
         # All validations should return empty lists (valid config)
         assert all(e == [] for e in errors_list)
+
+
+# =============================================================================
+# Prompt Text CLI Tests
+# =============================================================================
+
+
+class TestPromptTextConfig:
+    """Test prompt_text configuration option."""
+
+    def test_prompt_text_defaults_to_none(self):
+        """Test that prompt_text defaults to None."""
+        config = RalphConfig()
+        assert config.prompt_text is None
+
+    def test_prompt_text_can_be_set(self):
+        """Test that prompt_text can be set directly."""
+        config = RalphConfig(prompt_text="Build a REST API")
+        assert config.prompt_text == "Build a REST API"
+
+    def test_prompt_text_with_prompt_file(self):
+        """Test prompt_text alongside prompt_file."""
+        config = RalphConfig(
+            prompt_file="PROMPT.md",
+            prompt_text="Direct prompt text"
+        )
+        assert config.prompt_file == "PROMPT.md"
+        assert config.prompt_text == "Direct prompt text"
+
+    def test_prompt_text_from_yaml(self):
+        """Test loading prompt_text from YAML config."""
+        config_data = {
+            'agent': 'claude',
+            'prompt_text': 'Build a web app',
+            'max_iterations': 10
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
+            yaml.dump(config_data, f)
+            config_path = f.name
+
+        try:
+            config = RalphConfig.from_yaml(config_path)
+            assert config.prompt_text == 'Build a web app'
+        finally:
+            Path(config_path).unlink()
+
+    def test_prompt_text_multiline(self):
+        """Test prompt_text with multiline content."""
+        prompt = """# Task
+Build a REST API with:
+- User authentication
+- CRUD operations
+- Rate limiting"""
+        config = RalphConfig(prompt_text=prompt)
+        assert "REST API" in config.prompt_text
+        assert "Rate limiting" in config.prompt_text
