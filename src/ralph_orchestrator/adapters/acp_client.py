@@ -1,0 +1,292 @@
+# ABOUTME: ACPClient manages subprocess lifecycle for ACP agents
+# ABOUTME: Handles async message routing, request tracking, and graceful shutdown
+
+"""ACPClient subprocess manager for ACP (Agent Client Protocol)."""
+
+import asyncio
+from typing import Any, Callable, Optional
+
+from .acp_protocol import ACPProtocol, MessageType
+
+
+class ACPClientError(Exception):
+    """Exception raised by ACPClient operations."""
+
+    pass
+
+
+class ACPClient:
+    """Manages subprocess lifecycle and async message routing for ACP agents.
+
+    Spawns an agent subprocess, handles JSON-RPC message serialization,
+    routes responses to pending requests, and invokes callbacks for
+    notifications and incoming requests.
+
+    Attributes:
+        command: The command to spawn the agent.
+        args: Additional command-line arguments.
+        timeout: Request timeout in seconds.
+    """
+
+    def __init__(
+        self,
+        command: str,
+        args: Optional[list[str]] = None,
+        timeout: int = 300,
+    ) -> None:
+        """Initialize ACPClient.
+
+        Args:
+            command: The command to spawn the agent (e.g., "gemini").
+            args: Additional command-line arguments.
+            timeout: Request timeout in seconds (default: 300).
+        """
+        self.command = command
+        self.args = args or []
+        self.timeout = timeout
+
+        self._protocol = ACPProtocol()
+        self._process: Optional[asyncio.subprocess.Process] = None
+        self._read_task: Optional[asyncio.Task] = None
+        self._write_lock = asyncio.Lock()
+
+        # Pending requests: id -> Future
+        self._pending_requests: dict[int, asyncio.Future] = {}
+
+        # Notification handlers
+        self._notification_handlers: list[Callable[[str, dict], None]] = []
+
+        # Request handlers (for incoming requests from agent)
+        self._request_handlers: list[Callable[[str, dict], Any]] = []
+
+    @property
+    def is_running(self) -> bool:
+        """Check if subprocess is running.
+
+        Returns:
+            True if subprocess is running, False otherwise.
+        """
+        return self._process is not None and self._process.returncode is None
+
+    async def start(self) -> None:
+        """Start the agent subprocess.
+
+        Spawns the subprocess with stdin/stdout/stderr pipes and starts
+        the read loop task.
+
+        Raises:
+            RuntimeError: If already running.
+            FileNotFoundError: If command not found.
+        """
+        if self.is_running:
+            raise RuntimeError("ACPClient is already running")
+
+        cmd = [self.command] + self.args
+
+        self._process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+        # Start the read loop
+        self._read_task = asyncio.create_task(self._read_loop())
+
+    async def stop(self) -> None:
+        """Stop the agent subprocess.
+
+        Terminates the subprocess gracefully, then kills if necessary.
+        Cancels the read loop task.
+        """
+        if not self.is_running:
+            return
+
+        # Cancel read loop
+        if self._read_task and not self._read_task.done():
+            self._read_task.cancel()
+            try:
+                await self._read_task
+            except asyncio.CancelledError:
+                pass
+
+        # Terminate subprocess
+        if self._process:
+            try:
+                self._process.terminate()
+                try:
+                    await asyncio.wait_for(self._process.wait(), timeout=5.0)
+                except asyncio.TimeoutError:
+                    self._process.kill()
+                    await self._process.wait()
+            except ProcessLookupError:
+                pass  # Already dead
+
+        self._process = None
+        self._read_task = None
+
+        # Cancel pending requests
+        for future in self._pending_requests.values():
+            if not future.done():
+                future.cancel()
+        self._pending_requests.clear()
+
+    async def _read_loop(self) -> None:
+        """Continuously read stdout and route messages.
+
+        Reads newline-delimited JSON-RPC messages from subprocess stdout.
+        """
+        if not self._process or not self._process.stdout:
+            return
+
+        try:
+            while self.is_running:
+                line = await self._process.stdout.readline()
+                if not line:
+                    break
+
+                message_str = line.decode().strip()
+                if message_str:
+                    await self._handle_message(message_str)
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            pass  # Log error in production
+
+    async def _handle_message(self, message_str: str) -> None:
+        """Handle a received JSON-RPC message.
+
+        Routes message to appropriate handler based on type.
+
+        Args:
+            message_str: Raw JSON string.
+        """
+        parsed = self._protocol.parse_message(message_str)
+        msg_type = parsed.get("type")
+
+        if msg_type == MessageType.RESPONSE:
+            # Route to pending request
+            request_id = parsed.get("id")
+            if request_id in self._pending_requests:
+                future = self._pending_requests.pop(request_id)
+                if not future.done():
+                    future.set_result(parsed.get("result"))
+
+        elif msg_type == MessageType.ERROR:
+            # Route error to pending request
+            request_id = parsed.get("id")
+            if request_id in self._pending_requests:
+                future = self._pending_requests.pop(request_id)
+                if not future.done():
+                    error = parsed.get("error", {})
+                    error_msg = error.get("message", "Unknown error")
+                    future.set_exception(ACPClientError(error_msg))
+
+        elif msg_type == MessageType.NOTIFICATION:
+            # Invoke notification handlers
+            method = parsed.get("method", "")
+            params = parsed.get("params", {})
+            for handler in self._notification_handlers:
+                try:
+                    handler(method, params)
+                except Exception:
+                    pass  # Log in production
+
+        elif msg_type == MessageType.REQUEST:
+            # Invoke request handlers and send response
+            request_id = parsed.get("id")
+            method = parsed.get("method", "")
+            params = parsed.get("params", {})
+
+            for handler in self._request_handlers:
+                try:
+                    if asyncio.iscoroutinefunction(handler):
+                        result = await handler(method, params)
+                    else:
+                        result = handler(method, params)
+
+                    # Send response
+                    response = self._protocol.create_response(request_id, result)
+                    await self._write_message(response)
+                    break  # Only first handler responds
+                except Exception as e:
+                    # Send error response
+                    error_response = self._protocol.create_error_response(
+                        request_id, -32603, str(e)
+                    )
+                    await self._write_message(error_response)
+                    break
+
+    async def _write_message(self, message: str) -> None:
+        """Write a JSON-RPC message to subprocess stdin.
+
+        Args:
+            message: JSON string to write.
+
+        Raises:
+            RuntimeError: If not running.
+        """
+        if not self.is_running or not self._process or not self._process.stdin:
+            raise RuntimeError("ACPClient is not running")
+
+        async with self._write_lock:
+            self._process.stdin.write((message + "\n").encode())
+            await self._process.stdin.drain()
+
+    def send_request(
+        self, method: str, params: dict[str, Any]
+    ) -> asyncio.Future[Any]:
+        """Send a JSON-RPC request and return Future for response.
+
+        Args:
+            method: The RPC method name.
+            params: The request parameters.
+
+        Returns:
+            Future that resolves with the response result.
+        """
+        request_id, message = self._protocol.create_request(method, params)
+
+        # Create future for response
+        loop = asyncio.get_event_loop()
+        future: asyncio.Future[Any] = loop.create_future()
+        self._pending_requests[request_id] = future
+
+        # Schedule write
+        asyncio.create_task(self._write_message(message))
+
+        return future
+
+    async def send_notification(
+        self, method: str, params: dict[str, Any]
+    ) -> None:
+        """Send a JSON-RPC notification (no response expected).
+
+        Args:
+            method: The notification method name.
+            params: The notification parameters.
+        """
+        message = self._protocol.create_notification(method, params)
+        await self._write_message(message)
+
+    def on_notification(
+        self, handler: Callable[[str, dict], None]
+    ) -> None:
+        """Register a notification handler.
+
+        Args:
+            handler: Callback invoked with (method, params) for each notification.
+        """
+        self._notification_handlers.append(handler)
+
+    def on_request(
+        self, handler: Callable[[str, dict], Any]
+    ) -> None:
+        """Register a request handler for incoming requests from agent.
+
+        Handler should return the response result. Can be sync or async.
+
+        Args:
+            handler: Callback invoked with (method, params), returns result.
+        """
+        self._request_handlers.append(handler)
