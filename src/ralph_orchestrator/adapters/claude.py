@@ -150,7 +150,7 @@ class ClaudeAdapter(ToolAdapter):
     async def aexecute(self, prompt: str, **kwargs) -> ToolResponse:
         """Execute Claude with the given prompt asynchronously."""
         if not self.available:
-            logger.info("Claude SDK not available")
+            logger.debug("Claude SDK not available")
             return ToolResponse(
                 success=False,
                 output="",
@@ -203,26 +203,26 @@ class ClaudeAdapter(ToolAdapter):
             # If enable_all_tools is True and no allowed_tools, Claude will have access to all native tools
             if enable_all_tools and not allowed_tools:
                 if self.verbose:
-                    logger.info("Enabling all native Claude tools (including WebSearch)")
+                    logger.debug("Enabling all native Claude tools (including WebSearch)")
             
             # Set permission mode - default to bypassPermissions for smoother operation
             permission_mode = kwargs.get('permission_mode', 'bypassPermissions')
             options_dict['permission_mode'] = permission_mode
             if self.verbose:
-                logger.info(f"Permission mode: {permission_mode}")
+                logger.debug(f"Permission mode: {permission_mode}")
             
             # Set current working directory to ensure files are created in the right place
             import os
             cwd = kwargs.get('cwd', os.getcwd())
             options_dict['cwd'] = cwd
             if self.verbose:
-                logger.info(f"Working directory: {cwd}")
+                logger.debug(f"Working directory: {cwd}")
 
             # Set max buffer size for handling large responses (e.g., screenshots)
             max_buffer_size = kwargs.get('max_buffer_size', self._max_buffer_size)
             options_dict['max_buffer_size'] = max_buffer_size
             if self.verbose:
-                logger.info(f"Max buffer size: {max_buffer_size} bytes")
+                logger.debug(f"Max buffer size: {max_buffer_size} bytes")
 
             # Configure setting sources to inherit user's Claude Code configuration
             # This enables MCP servers, CLAUDE.md files, and other user settings
@@ -231,33 +231,33 @@ class ClaudeAdapter(ToolAdapter):
                 # Load user, project, and local settings (includes MCP servers)
                 options_dict['setting_sources'] = ['user', 'project', 'local']
                 if self.verbose:
-                    logger.info("Inheriting user's Claude Code settings (MCP servers, CLAUDE.md, etc.)")
+                    logger.debug("Inheriting user's Claude Code settings (MCP servers, CLAUDE.md, etc.)")
 
             # Optional: use user's installed Claude Code CLI instead of bundled
             cli_path = kwargs.get('cli_path', self._cli_path)
             if cli_path:
                 options_dict['cli_path'] = cli_path
                 if self.verbose:
-                    logger.info(f"Using custom Claude CLI: {cli_path}")
+                    logger.debug(f"Using custom Claude CLI: {cli_path}")
 
             # Set model - defaults to Opus 4.5
             model = kwargs.get('model', self._model)
             options_dict['model'] = model
             if self.verbose:
-                logger.info(f"Using model: {model}")
+                logger.debug(f"Using model: {model}")
 
             # Create options
             options = ClaudeAgentOptions(**options_dict)
             
             # Log request details if verbose
             if self.verbose:
-                logger.info("Claude SDK Request:")
-                logger.info(f"  Prompt length: {len(prompt)} characters")
-                logger.info(f"  System prompt: {system_prompt}")
+                logger.debug("Claude SDK Request:")
+                logger.debug(f"  Prompt length: {len(prompt)} characters")
+                logger.debug(f"  System prompt: {system_prompt}")
                 if allowed_tools:
-                    logger.info(f"  Allowed tools: {allowed_tools}")
+                    logger.debug(f"  Allowed tools: {allowed_tools}")
                 if disallowed_tools:
-                    logger.info(f"  Disallowed tools: {disallowed_tools}")
+                    logger.debug(f"  Disallowed tools: {disallowed_tools}")
             
             # Collect all response chunks
             output_chunks = []
@@ -266,7 +266,7 @@ class ClaudeAdapter(ToolAdapter):
             
             # Use one-shot query for simpler execution
             if self.verbose:
-                logger.info("Starting Claude SDK query...")
+                logger.debug("Starting Claude SDK query...")
                 self._console.print_header("CLAUDE PROCESSING")
             
             async for message in query(prompt=prompt, options=options):
@@ -311,7 +311,7 @@ class ClaudeAdapter(ToolAdapter):
                                                 value_str = value_str[:97] + "..."
                                             self._console.print_info(f"  - {key}: {value_str}")
 
-                                    logger.info(f"Tool use detected: {tool_name} (id: {tool_id[:8]}...)")
+                                    logger.debug(f"Tool use detected: {tool_name} (id: {tool_id[:8]}...)")
                                     if hasattr(content_block, 'input'):
                                         logger.debug(f"  Tool input: {content_block.input}")
                             
@@ -431,7 +431,7 @@ class ClaudeAdapter(ToolAdapter):
                 self._console.print_separator()
             
             # Always log the output we're about to return
-            logger.info(f"Claude adapter returning {len(output)} characters of output")
+            logger.debug(f"Claude adapter returning {len(output)} characters of output")
             if output:
                 logger.debug(f"Output preview: {output[:200]}...")
             
@@ -440,13 +440,13 @@ class ClaudeAdapter(ToolAdapter):
             
             # Log response details if verbose
             if self.verbose:
-                logger.info("Claude SDK Response:")
-                logger.info(f"  Output length: {len(output)} characters")
-                logger.info(f"  Chunks received: {chunk_count}")
+                logger.debug("Claude SDK Response:")
+                logger.debug(f"  Output length: {len(output)} characters")
+                logger.debug(f"  Chunks received: {chunk_count}")
                 if tokens_used > 0:
-                    logger.info(f"  Tokens used: {tokens_used}")
+                    logger.debug(f"  Tokens used: {tokens_used}")
                     if cost:
-                        logger.info(f"  Estimated cost: ${cost:.4f}")
+                        logger.debug(f"  Estimated cost: ${cost:.4f}")
                 logger.debug(f"Response preview: {output[:500]}..." if len(output) > 500 else f"Response: {output}")
             
             return ToolResponse(
@@ -473,7 +473,7 @@ class ClaudeAdapter(ToolAdapter):
             # Check if this is a user-initiated cancellation (SIGINT = exit code -2)
             error_str = str(e)
             if "exit code -2" in error_str or "exit code: -2" in error_str:
-                logger.info("Claude execution cancelled by user")
+                logger.debug("Claude execution cancelled by user")
                 return ToolResponse(
                     success=False,
                     output="",

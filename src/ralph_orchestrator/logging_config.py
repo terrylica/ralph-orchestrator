@@ -87,11 +87,15 @@ class RalphLogger:
             cls._setup_file_handler(root_logger, formatter, log_file, log_dir, numeric_level)
         
         cls._initialized = True
-        
+
+        # Suppress verbose INFO logs from claude-agent-sdk internals
+        # The SDK logs operational details at INFO level (e.g., "Using bundled Claude Code CLI")
+        logging.getLogger('claude_agent_sdk').setLevel(logging.WARNING)
+
         # Log initialization
         logger = logging.getLogger(cls.ORCHESTRATOR)
-        logger.info(f"Logging initialized - Level: {log_level}, Console: {console_output}, "
-                   f"File: {log_file or 'None'}, Dir: {log_dir or 'None'}")
+        logger.debug(f"Logging initialized - Level: {log_level}, Console: {console_output}, "
+                    f"File: {log_file or 'None'}, Dir: {log_dir or 'None'}")
     
     @classmethod
     def _setup_file_handler(cls, 
