@@ -120,8 +120,12 @@ def show_status():
                     _console.print_info(f"  Iterations: {data.get('iteration_count', 0)}")
                     _console.print_info(f"  Runtime: {data.get('runtime', 0):.1f}s")
                     _console.print_info(f"  Errors: {len(data.get('errors', []))}")
-            except Exception:
-                pass
+            except json.JSONDecodeError:
+                _console.print_warning(f"  Warning: Metrics file {latest_state.name} is corrupted")
+            except PermissionError:
+                _console.print_warning(f"  Warning: No permission to read {latest_state.name}")
+            except Exception as e:
+                _console.print_warning(f"  Warning: Could not read metrics - {e}")
 
     # Check git status
     if Path(".git").exists():
@@ -664,23 +668,17 @@ Examples:
             allow_unsafe_paths=args.allow_unsafe_paths,
             agent_args=args.agent_args if hasattr(args, 'agent_args') else []
         )
-    
-    if config.dry_run:
-        _console.print_info("Dry run mode - no tools will be executed")
-        _console.print_info("Configuration:")
-        if config.prompt_text:
-            preview = config.prompt_text[:100] + "..." if len(config.prompt_text) > 100 else config.prompt_text
-            _console.print_info(f"  Prompt text: {preview}")
-        else:
-            _console.print_info(f"  Prompt file: {config.prompt_file}")
-        _console.print_info(f"  Agent: {config.agent.value}")
-        _console.print_info(f"  Max iterations: {config.max_iterations}")
-        _console.print_info(f"  Max runtime: {config.max_runtime}s")
-        _console.print_info(f"  Max cost: ${config.max_cost:.2f}")
-        sys.exit(0)
 
-    # Validate prompt file exists (unless prompt_text is provided)
-    if not config.prompt_text:
+    # Validate prompt source exists and has content (before dry-run check)
+    if config.prompt_text is not None:
+        # Validate prompt_text is not empty or whitespace-only
+        if not config.prompt_text.strip():
+            _console.print_error("Prompt text cannot be empty or whitespace-only")
+            _console.print_info("Please provide actual task text with --prompt-text")
+            _console.print_info("Or use --prompt-file to load from a file")
+            sys.exit(1)
+    else:
+        # Validate prompt file exists
         prompt_path = Path(config.prompt_file)
         if not prompt_path.exists():
             _console.print_error(f"Prompt file '{config.prompt_file}' not found")
@@ -696,6 +694,20 @@ Examples:
 - Add tests
 ---""")
             sys.exit(1)
+
+    if config.dry_run:
+        _console.print_info("Dry run mode - no tools will be executed")
+        _console.print_info("Configuration:")
+        if config.prompt_text:
+            preview = config.prompt_text[:100] + "..." if len(config.prompt_text) > 100 else config.prompt_text
+            _console.print_info(f"  Prompt text: {preview}")
+        else:
+            _console.print_info(f"  Prompt file: {config.prompt_file}")
+        _console.print_info(f"  Agent: {config.agent.value}")
+        _console.print_info(f"  Max iterations: {config.max_iterations}")
+        _console.print_info(f"  Max runtime: {config.max_runtime}s")
+        _console.print_info(f"  Max cost: ${config.max_cost:.2f}")
+        sys.exit(0)
     
     try:
         # Create and run orchestrator

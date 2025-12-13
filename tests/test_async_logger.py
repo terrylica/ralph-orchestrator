@@ -502,3 +502,292 @@ class TestAsyncFileLoggerVerbose:
             await logger.log("INFO", "Silent message")
             captured = capsys.readouterr()
             assert captured.out == ""
+
+
+class TestAsyncFileLoggerErrorHandling:
+    """Tests for error handling in sync logging methods."""
+
+    def test_sync_logging_handles_permission_error(self, capsys):
+        """Sync logging should handle PermissionError gracefully with stderr fallback."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_path = Path(tmpdir) / "test.log"
+            logger = AsyncFileLogger(str(log_path))
+
+            # Mock _write_to_file to raise PermissionError
+            with patch.object(logger, '_write_to_file', side_effect=PermissionError("Permission denied")):
+                # Should not raise exception
+                logger.log_info_sync("Test message with permission error")
+
+            # Verify stderr output contains error details
+            captured = capsys.readouterr()
+            assert "[LOGGING ERROR]" in captured.err
+            assert "PermissionError" in captured.err
+            assert "Permission denied" in captured.err
+            assert "Test message" in captured.err
+
+    def test_sync_logging_handles_os_error(self, capsys):
+        """Sync logging should handle OSError gracefully with stderr fallback."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_path = Path(tmpdir) / "test.log"
+            logger = AsyncFileLogger(str(log_path))
+
+            # Mock _write_to_file to raise OSError
+            with patch.object(logger, '_write_to_file', side_effect=OSError("Disk full")):
+                logger.log_info_sync("Test message with OS error")
+
+            captured = capsys.readouterr()
+            assert "[LOGGING ERROR]" in captured.err
+            assert "OSError" in captured.err
+            assert "Disk full" in captured.err
+
+    def test_sync_logging_handles_io_error(self, capsys):
+        """Sync logging should handle IOError gracefully with stderr fallback."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_path = Path(tmpdir) / "test.log"
+            logger = AsyncFileLogger(str(log_path))
+
+            # Mock _write_to_file to raise IOError (which is OSError in Python 3)
+            with patch.object(logger, '_write_to_file', side_effect=IOError("I/O error")):
+                logger.log_error_sync("Test error message")
+
+            captured = capsys.readouterr()
+            assert "[LOGGING ERROR]" in captured.err
+            # IOError is an alias for OSError in Python 3
+            assert "OSError" in captured.err
+            assert "I/O error" in captured.err
+
+    def test_sync_logging_truncates_long_messages_in_stderr(self, capsys):
+        """Stderr fallback should truncate very long messages."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_path = Path(tmpdir) / "test.log"
+            logger = AsyncFileLogger(str(log_path))
+
+            long_message = "X" * 300  # Message longer than 200 chars
+
+            with patch.object(logger, '_write_to_file', side_effect=OSError("Error")):
+                logger.log_info_sync(long_message)
+
+            captured = capsys.readouterr()
+            # Should contain truncated message (first 200 chars)
+            assert "X" * 200 in captured.err
+            # Should not contain full message
+            assert "X" * 300 not in captured.err
+
+    def test_sync_logging_preserves_emergency_shutdown_check(self):
+        """Emergency shutdown should still prevent logging attempts."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_path = Path(tmpdir) / "test.log"
+            logger = AsyncFileLogger(str(log_path))
+
+            # Trigger emergency shutdown
+            logger.emergency_shutdown()
+
+            # Even with mocked error, should return immediately
+            with patch.object(logger, '_write_to_file', side_effect=OSError("Should not reach")) as mock_write:
+                logger.log_info_sync("Should not log")
+
+            # _write_to_file should never be called
+            mock_write.assert_not_called()
+
+    def test_normal_logging_still_works_after_error_handling(self):
+        """Normal logging should continue to work after error handling is added."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_path = Path(tmpdir) / "test.log"
+            logger = AsyncFileLogger(str(log_path))
+            logger.log_info_sync("Normal message")
+
+            content = log_path.read_text()
+            assert "Normal message" in content
+            assert "[INFO]" in content
+
+    def test_concurrent_errors_dont_corrupt_stderr(self, capsys):
+        """Multiple threads encountering errors should have thread-safe stderr output."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_path = Path(tmpdir) / "test.log"
+            logger = AsyncFileLogger(str(log_path))
+
+            def log_with_error(i):
+                with patch.object(logger, '_write_to_file', side_effect=OSError(f"Error {i}")):
+                    logger.log_info_sync(f"Thread {i} message")
+
+            threads = [threading.Thread(target=log_with_error, args=(i,)) for i in range(3)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+            captured = capsys.readouterr()
+            # Verify all errors were reported
+            assert captured.err.count("[LOGGING ERROR]") == 3
+
+
+class TestSyncMethodsThreadSafety:
+    """Tests for thread safety of synchronous logging methods."""
+
+    def test_high_contention_no_deadlock(self):
+        """High contention with 20+ threads should not cause deadlock (regression test for e5577bb)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_path = Path(tmpdir) / "test.log"
+            logger = AsyncFileLogger(str(log_path))
+
+            # Use barrier to synchronize thread start for maximum contention
+            num_threads = 20
+            messages_per_thread = 10
+            barrier = threading.Barrier(num_threads)
+            results = []
+
+            def log_with_barrier(thread_id):
+                try:
+                    # Wait for all threads to be ready
+                    barrier.wait()
+                    # Now all threads log simultaneously
+                    for i in range(messages_per_thread):
+                        logger.log_info_sync(f"Thread {thread_id} message {i}")
+                    results.append(thread_id)
+                except Exception as e:
+                    results.append(f"error-{thread_id}: {e}")
+
+            threads = [threading.Thread(target=log_with_barrier, args=(i,)) for i in range(num_threads)]
+
+            # Start all threads
+            for t in threads:
+                t.start()
+
+            # Join with timeout to detect deadlocks
+            timeout = 5.0
+            for t in threads:
+                t.join(timeout=timeout)
+                if t.is_alive():
+                    pytest.fail(f"Thread deadlock detected - thread did not complete within {timeout}s")
+
+            # All threads should have completed successfully
+            assert len(results) == num_threads, f"Expected {num_threads} results, got {len(results)}"
+
+            # No errors should have occurred
+            error_results = [r for r in results if isinstance(r, str) and r.startswith("error-")]
+            assert len(error_results) == 0, f"Errors occurred: {error_results}"
+
+            # Verify all messages were logged
+            content = log_path.read_text()
+            for thread_id in range(num_threads):
+                for msg_num in range(messages_per_thread):
+                    assert f"Thread {thread_id} message {msg_num}" in content
+
+
+class TestSyncMethodsBehavior:
+    """Tests for behavioral requirements of synchronous logging methods."""
+
+    def test_sync_works_without_event_loop(self):
+        """Sync methods should work without any asyncio event loop (regression test for e5577bb)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_path = Path(tmpdir) / "test.log"
+            logger = AsyncFileLogger(str(log_path))
+
+            # Ensure no asyncio event loop exists
+            # In a fresh thread, there will be no event loop
+            results = []
+
+            def log_without_loop():
+                try:
+                    # Verify no loop exists (this would raise RuntimeError)
+                    try:
+                        asyncio.get_running_loop()
+                        results.append("error: event loop found")
+                    except RuntimeError:
+                        # Expected - no running loop
+                        pass
+
+                    # Now log - should work without asyncio
+                    logger.log_info_sync("Message without event loop")
+                    logger.log_success_sync("Success without event loop")
+                    logger.log_error_sync("Error without event loop")
+                    logger.log_warning_sync("Warning without event loop")
+                    results.append("success")
+                except Exception as e:
+                    results.append(f"error: {e}")
+
+            thread = threading.Thread(target=log_without_loop)
+            thread.start()
+            thread.join(timeout=2.0)
+
+            assert not thread.is_alive(), "Thread timed out"
+            assert results == ["success"], f"Expected success, got {results}"
+
+            # Verify all messages were written
+            content = log_path.read_text()
+            assert "Message without event loop" in content
+            assert "Success without event loop" in content
+            assert "Error without event loop" in content
+            assert "Warning without event loop" in content
+
+    def test_sync_respects_emergency_shutdown(self):
+        """Emergency shutdown should prevent sync methods from writing to log."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_path = Path(tmpdir) / "test.log"
+            logger = AsyncFileLogger(str(log_path))
+
+            # Log a message before shutdown
+            logger.log_info_sync("Before shutdown")
+
+            # Trigger emergency shutdown
+            logger.emergency_shutdown()
+
+            # Try to log after shutdown
+            logger.log_info_sync("After shutdown - should not appear")
+            logger.log_error_sync("Error after shutdown - should not appear")
+
+            # Read log content
+            content = log_path.read_text()
+
+            # Message before shutdown should be present
+            assert "Before shutdown" in content
+
+            # Messages after shutdown should NOT be present
+            assert "After shutdown" not in content
+            assert "Error after shutdown" not in content
+
+    def test_sync_verbose_prints_to_console(self, capsys):
+        """Verbose mode should print to console in sync methods."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_path = Path(tmpdir) / "test.log"
+            logger = AsyncFileLogger(str(log_path), verbose=True)
+
+            # Log with verbose enabled
+            logger.log_info_sync("Verbose sync message")
+
+            # Check console output
+            captured = capsys.readouterr()
+            assert "Verbose sync message" in captured.out
+            assert "[INFO]" in captured.out
+
+            # Also verify it was written to file
+            content = log_path.read_text()
+            assert "Verbose sync message" in content
+
+    def test_sync_masks_sensitive_data(self):
+        """Security masking should work in sync code path."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_path = Path(tmpdir) / "test.log"
+            logger = AsyncFileLogger(str(log_path))
+
+            # Log message with API key
+            logger.log_info_sync("Using API key: sk-1234567890abcdef")
+
+            # Log message with bearer token
+            logger.log_error_sync("Auth failed: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9")
+
+            # Log message with password
+            logger.log_warning_sync("password=mysecretpassword123 is invalid")
+
+            # Read log content
+            content = log_path.read_text()
+
+            # Original sensitive data should NOT be visible
+            assert "1234567890abcdef" not in content
+            assert "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" not in content
+            assert "mysecretpassword123" not in content
+
+            # Masked versions should be present
+            assert "sk-***********" in content
+            assert "Bearer ***********" in content
+            assert "*********" in content

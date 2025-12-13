@@ -15,6 +15,7 @@ Features:
 import asyncio
 import functools
 import shutil
+import sys
 import threading
 import warnings
 from datetime import datetime
@@ -290,6 +291,7 @@ class AsyncFileLogger:
         Log a message synchronously using threading.Lock (thread-safe).
 
         This bypasses asyncio entirely for true multi-threaded safety.
+        Includes defensive error handling with stderr fallback.
         """
         if self._emergency_shutdown:
             return
@@ -301,12 +303,26 @@ class AsyncFileLogger:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_line = f"{timestamp} [{level}] {secure_message}\n"
 
-        with self._thread_lock:
-            if self._emergency_shutdown:
-                return
-            self._write_to_file(log_line)
-            if self.verbose:
-                print(log_line.rstrip())
+        try:
+            with self._thread_lock:
+                if self._emergency_shutdown:
+                    return
+                self._write_to_file(log_line)
+                if self.verbose:
+                    print(log_line.rstrip())
+        except (PermissionError, OSError, IOError, FileNotFoundError) as e:
+            # Fallback to stderr when file I/O fails
+            # Truncate message to 200 chars for stderr output
+            truncated_message = secure_message[:200]
+            try:
+                print(
+                    f"[LOGGING ERROR] {type(e).__name__}: {e}\n"
+                    f"Original message (truncated): {truncated_message}",
+                    file=sys.stderr
+                )
+            except Exception:
+                # If stderr also fails, silently ignore to prevent cascading failures
+                pass
 
     def log_info_sync(self, message: str) -> None:
         """Log info message synchronously (thread-safe)."""

@@ -6,7 +6,6 @@
 from pathlib import Path
 from typing import List, Optional, Dict
 import hashlib
-import json
 import logging
 
 logger = logging.getLogger('ralph-orchestrator.context')
@@ -49,9 +48,20 @@ class ContextManager:
         """Load and analyze the initial prompt."""
         # Use direct prompt text if provided
         if self.prompt_text:
+            logger.info("Using direct prompt_text input")
             content = self.prompt_text
         elif self.prompt_file.exists():
-            content = self.prompt_file.read_text()
+            try:
+                content = self.prompt_file.read_text()
+            except UnicodeDecodeError as e:
+                logger.error(f"Encoding error reading {self.prompt_file}: {e}")
+                return
+            except PermissionError as e:
+                logger.error(f"Permission denied reading {self.prompt_file}: {e}")
+                return
+            except OSError as e:
+                logger.error(f"OS error reading {self.prompt_file}: {e}")
+                return
         else:
             logger.warning(f"Prompt file {self.prompt_file} not found")
             return
@@ -78,8 +88,19 @@ class ContextManager:
         if self.prompt_text:
             base_content = self.prompt_text
         elif self.prompt_file.exists():
-            base_content = self.prompt_file.read_text()
+            try:
+                base_content = self.prompt_file.read_text()
+            except UnicodeDecodeError as e:
+                logger.error(f"Encoding error reading {self.prompt_file}: {e}")
+                return ""
+            except PermissionError as e:
+                logger.error(f"Permission denied reading {self.prompt_file}: {e}")
+                return ""
+            except OSError as e:
+                logger.error(f"OS error reading {self.prompt_file}: {e}")
+                return ""
         else:
+            logger.error(f"No prompt available: prompt_text={self.prompt_text is not None}, prompt_file={self.prompt_file}")
             return ""
         
         # Check if we need to optimize
