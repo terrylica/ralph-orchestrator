@@ -11,6 +11,7 @@ import signal
 from typing import Optional
 from .base import ToolAdapter, ToolResponse
 from ..error_formatter import ClaudeErrorFormatter
+from ..output.console import RalphConsole
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -63,10 +64,9 @@ class ClaudeAdapter(ToolAdapter):
         self._inherit_user_settings = inherit_user_settings
         # Optional path to user's Claude Code CLI (uses bundled CLI if not specified)
         self._cli_path = cli_path
-        # Model selection - defaults to Opus 4.5
         self._model = model or self.DEFAULT_MODEL
-        # Subprocess tracking for signal-safe termination
         self._subprocess_pid: Optional[int] = None
+        self._console = RalphConsole()
     
     def check_availability(self) -> bool:
         """Check if Claude SDK is available and properly configured."""
@@ -267,9 +267,7 @@ class ClaudeAdapter(ToolAdapter):
             # Use one-shot query for simpler execution
             if self.verbose:
                 logger.info("Starting Claude SDK query...")
-                print("\n" + "="*50)
-                print("CLAUDE PROCESSING:")
-                print("="*50)
+                self._console.print_header("CLAUDE PROCESSING")
             
             async for message in query(prompt=prompt, options=options):
                 chunk_count += 1
@@ -290,36 +288,29 @@ class ClaudeAdapter(ToolAdapter):
                                 # TextBlock
                                 text = content_block.text
                                 output_chunks.append(text)
-                                
-                                # Stream output to console in real-time when verbose
+
                                 if self.verbose and text:
-                                    print(text, end='', flush=True)
+                                    self._console.print_message(text)
                                     logger.debug(f"Received assistant text: {len(text)} characters")
                             
                             elif block_type == 'ToolUseBlock':
-                                # Tool use block - log but don't include in output
                                 if self.verbose:
                                     tool_name = getattr(content_block, 'name', 'unknown')
                                     tool_id = getattr(content_block, 'id', 'unknown')
                                     tool_input = getattr(content_block, 'input', {})
-                                    
-                                    # Enhanced tool display
-                                    print(f"\n{'='*50}", flush=True)
-                                    print(f"[TOOL USE: {tool_name}]", flush=True)
-                                    print(f"  ID: {tool_id[:12]}...", flush=True)
-                                    
-                                    # Display input parameters
+
+                                    self._console.print_separator()
+                                    self._console.print_status(f"TOOL USE: {tool_name}", style="cyan bold")
+                                    self._console.print_info(f"ID: {tool_id[:12]}...")
+
                                     if tool_input:
-                                        print("  Input Parameters:", flush=True)
+                                        self._console.print_info("Input Parameters:")
                                         for key, value in tool_input.items():
-                                            # Truncate long values for display
                                             value_str = str(value)
                                             if len(value_str) > 100:
                                                 value_str = value_str[:97] + "..."
-                                            print(f"    - {key}: {value_str}", flush=True)
-                                    
-                                    print(f"{'='*50}", flush=True)
-                                    
+                                            self._console.print_info(f"  - {key}: {value_str}")
+
                                     logger.info(f"Tool use detected: {tool_name} (id: {tool_id[:8]}...)")
                                     if hasattr(content_block, 'input'):
                                         logger.debug(f"  Tool input: {content_block.input}")
@@ -351,90 +342,81 @@ class ClaudeAdapter(ToolAdapter):
                         logger.debug("System initialization message received")
                 
                 elif msg_type == 'UserMessage':
-                    # User message (tool results being sent back)
                     if self.verbose:
                         logger.debug("User message (tool result) received")
-                        
-                        # Extract and display tool results from UserMessage
+
                         if hasattr(message, 'content'):
                             content = message.content
-                            # Handle both string and list content
                             if isinstance(content, list):
                                 for content_item in content:
                                     if hasattr(content_item, '__class__'):
                                         item_type = content_item.__class__.__name__
                                         if item_type == 'ToolResultBlock':
-                                            print("\n[TOOL RESULT]", flush=True)
                                             tool_use_id = getattr(content_item, 'tool_use_id', 'unknown')
-                                            print(f"  For Tool ID: {tool_use_id[:12]}...", flush=True)
-                                            
                                             result_content = getattr(content_item, 'content', None)
                                             is_error = getattr(content_item, 'is_error', False)
-                                            
+
+                                            self._console.print_separator()
+                                            self._console.print_status("TOOL RESULT", style="yellow bold")
+                                            self._console.print_info(f"For Tool ID: {tool_use_id[:12]}...")
+
                                             if is_error:
-                                                print("  Status: ERROR", flush=True)
+                                                self._console.print_error("Status: ERROR")
                                             else:
-                                                print("  Status: Success", flush=True)
-                                            
+                                                self._console.print_success("Status: Success")
+
                                             if result_content:
-                                                print("  Output:", flush=True)
-                                                # Handle different content types
+                                                self._console.print_info("Output:")
                                                 if isinstance(result_content, str):
-                                                    # Truncate long outputs
                                                     if len(result_content) > 500:
-                                                        print(f"    {result_content[:497]}...", flush=True)
+                                                        self._console.print_message(f"  {result_content[:497]}...")
                                                     else:
-                                                        print(f"    {result_content}", flush=True)
+                                                        self._console.print_message(f"  {result_content}")
                                                 elif isinstance(result_content, list):
-                                                    for item in result_content[:3]:  # Show first 3 items
-                                                        print(f"    - {item}", flush=True)
+                                                    for item in result_content[:3]:
+                                                        self._console.print_info(f"  - {item}")
                                                     if len(result_content) > 3:
-                                                        print(f"    ... and {len(result_content) - 3} more items", flush=True)
-                                            print(f"{'='*50}", flush=True)
+                                                        self._console.print_info(f"  ... and {len(result_content) - 3} more items")
                 
                 elif msg_type == 'ToolResultMessage':
-                    # Tool result message
                     if self.verbose:
                         logger.debug("Tool result message received")
-                        
-                        # Extract and display content from ToolResultMessage
+
+                        self._console.print_separator()
+                        self._console.print_status("TOOL RESULT MESSAGE", style="yellow bold")
+
                         if hasattr(message, 'tool_use_id'):
-                            print("\n[TOOL RESULT MESSAGE]", flush=True)
-                            print(f"  Tool ID: {message.tool_use_id[:12]}...", flush=True)
-                        
+                            self._console.print_info(f"Tool ID: {message.tool_use_id[:12]}...")
+
                         if hasattr(message, 'content'):
                             content = message.content
                             if content:
-                                print("  Content:", flush=True)
+                                self._console.print_info("Content:")
                                 if isinstance(content, str):
                                     if len(content) > 500:
-                                        print(f"    {content[:497]}...", flush=True)
+                                        self._console.print_message(f"  {content[:497]}...")
                                     else:
-                                        print(f"    {content}", flush=True)
+                                        self._console.print_message(f"  {content}")
                                 elif isinstance(content, list):
                                     for item in content[:3]:
-                                        print(f"    - {item}", flush=True)
+                                        self._console.print_info(f"  - {item}")
                                     if len(content) > 3:
-                                        print(f"    ... and {len(content) - 3} more items", flush=True)
-                        
+                                        self._console.print_info(f"  ... and {len(content) - 3} more items")
+
                         if hasattr(message, 'is_error') and message.is_error:
-                            print("  Error: True", flush=True)
-                        
-                        print(f"{'='*50}", flush=True)
+                            self._console.print_error("Error: True")
                 
                 elif hasattr(message, 'text'):
-                    # Generic text message
                     chunk_text = message.text
                     output_chunks.append(chunk_text)
                     if self.verbose:
-                        print(chunk_text, end='', flush=True)
+                        self._console.print_message(chunk_text)
                         logger.debug(f"Received text chunk {chunk_count}: {len(chunk_text)} characters")
-                
+
                 elif isinstance(message, str):
-                    # Plain string message
                     output_chunks.append(message)
                     if self.verbose:
-                        print(message, end='', flush=True)
+                        self._console.print_message(message)
                         logger.debug(f"Received string chunk {chunk_count}: {len(message)} characters")
                 
                 else:
@@ -443,10 +425,10 @@ class ClaudeAdapter(ToolAdapter):
             
             # Combine output
             output = ''.join(output_chunks)
-            
+
             # End streaming section if verbose
             if self.verbose:
-                print("\n" + "="*50 + "\n")
+                self._console.print_separator()
             
             # Always log the output we're about to return
             logger.info(f"Claude adapter returning {len(output)} characters of output")
