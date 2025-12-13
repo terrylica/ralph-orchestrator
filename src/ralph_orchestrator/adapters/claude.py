@@ -10,6 +10,7 @@ import os
 import signal
 from typing import Optional
 from .base import ToolAdapter, ToolResponse
+from ..error_formatter import ClaudeErrorFormatter
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -117,7 +118,7 @@ class ClaudeAdapter(ToolAdapter):
     
     def execute(self, prompt: str, **kwargs) -> ToolResponse:
         """Execute Claude with the given prompt synchronously.
-        
+
         This is a blocking wrapper around the async implementation.
         """
         try:
@@ -135,10 +136,15 @@ class ClaudeAdapter(ToolAdapter):
                     future = executor.submit(asyncio.run, self.aexecute(prompt, **kwargs))
                     return future.result()
         except Exception as e:
+            # Use error formatter for user-friendly error messages
+            error_msg = ClaudeErrorFormatter.format_error_from_exception(
+                iteration=kwargs.get('iteration', 0),
+                exception=e
+            )
             return ToolResponse(
                 success=False,
                 output="",
-                error=str(e)
+                error=str(error_msg)
             )
     
     async def aexecute(self, prompt: str, **kwargs) -> ToolResponse:
@@ -469,19 +475,29 @@ class ClaudeAdapter(ToolAdapter):
                 metadata={"model": model}
             )
             
-        except asyncio.TimeoutError:
-            logger.error("Claude SDK request timed out")
+        except asyncio.TimeoutError as e:
+            # Use error formatter for user-friendly timeout message
+            error_msg = ClaudeErrorFormatter.format_error_from_exception(
+                iteration=kwargs.get('iteration', 0),
+                exception=e
+            )
+            logger.error(f"Claude SDK request timed out: {error_msg.message}")
             return ToolResponse(
                 success=False,
                 output="",
-                error="Claude SDK request timed out"
+                error=str(error_msg)
             )
         except Exception as e:
-            logger.error(f"Claude SDK error: {str(e)}", exc_info=True)
+            # Use error formatter for user-friendly error messages
+            error_msg = ClaudeErrorFormatter.format_error_from_exception(
+                iteration=kwargs.get('iteration', 0),
+                exception=e
+            )
+            logger.error(f"Claude SDK error: {error_msg.message}", exc_info=True)
             return ToolResponse(
                 success=False,
                 output="",
-                error=str(e)
+                error=str(error_msg)
             )
     
     def _calculate_cost(self, tokens: Optional[int], model: str = None) -> Optional[float]:

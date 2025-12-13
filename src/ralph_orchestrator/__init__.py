@@ -7,5 +7,12 @@ __version__ = "0.1.0"
 
 from .orchestrator import RalphOrchestrator
 from .metrics import Metrics, CostTracker
+from .error_formatter import ClaudeErrorFormatter, ErrorMessage
 
-__all__ = ["RalphOrchestrator", "Metrics", "CostTracker"]
+__all__ = [
+    "RalphOrchestrator",
+    "Metrics",
+    "CostTracker",
+    "ClaudeErrorFormatter",
+    "ErrorMessage",
+]

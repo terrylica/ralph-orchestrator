@@ -158,15 +158,25 @@ Port the following capabilities:
 
 **Constraint:** Current SIGINT/SIGTERM behavior must remain functional. ✓ Preserved
 
-### 5. Error Formatter (MEDIUM)
+### 5. Error Formatter (MEDIUM) - DONE
 **Source:** `/home/arch/code/loop/ralph/core/claude_client.py` (ClaudeErrorFormatter class)
 
-- [ ] Structured error messages with user-friendly suggestions
-- [ ] Pattern matching for: timeout, process termination, connection errors
-- [ ] Security-aware error sanitization (no information disclosure)
-- [ ] Methods: `format_timeout_error()`, `format_process_terminated_error()`, etc.
+- [x] Structured error messages with user-friendly suggestions
+- [x] Pattern matching for: timeout, process termination, connection errors
+- [x] Security-aware error sanitization (no information disclosure)
+- [x] Methods: `format_timeout_error()`, `format_process_terminated_error()`, etc.
 
-**Integration:** Apply to adapter error handling in `adapters/claude.py`, `adapters/qchat.py`.
+**Implementation:**
+- Created `src/ralph_orchestrator/error_formatter.py` with `ClaudeErrorFormatter` and `ErrorMessage` classes
+- Methods for specific error types: timeout, process terminated, interrupted, connection, rate limit, authentication, permission
+- `format_error_from_exception()` method for automatic error type detection
+- Security-aware sanitization using `SecurityValidator.mask_sensitive_data()`
+- Truncation of long error messages (200 char limit)
+- 36 unit tests in `tests/test_error_formatter.py`
+- Integrated with `adapters/claude.py` for user-friendly error messages
+- Exported in package `__init__.py`
+
+**Integration:** Applied to `adapters/claude.py` (sync and async error handling).
 
 ### 6. VerboseLogger Enhancement (MEDIUM)
 **Source:** `/home/arch/code/loop/ralph/utils/verbose_logger.py`
