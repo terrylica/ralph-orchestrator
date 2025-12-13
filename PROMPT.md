@@ -178,15 +178,25 @@ Port the following capabilities:
 
 **Integration:** Applied to `adapters/claude.py` (sync and async error handling).
 
-### 6. VerboseLogger Enhancement (MEDIUM)
+### 6. VerboseLogger Enhancement (MEDIUM) - DONE
 **Source:** `/home/arch/code/loop/ralph/utils/verbose_logger.py`
 
-- [ ] Session metrics tracking in JSON format
-- [ ] Emergency shutdown capability
-- [ ] Re-entrancy protection (prevent logging loops)
-- [ ] Console output with Rich library integration
+- [x] Session metrics tracking in JSON format
+- [x] Emergency shutdown capability
+- [x] Re-entrancy protection (prevent logging loops)
+- [x] Console output with Rich library integration
 
-**Constraint:** `-v/--verbose` flag behavior must remain consistent.
+**Implementation:**
+- Created `src/ralph_orchestrator/verbose_logger.py` with `VerboseLogger` and `TextIOProxy` classes
+- Session metrics: tracks messages, tool calls, errors, iterations, tokens, cost in JSON format
+- Emergency shutdown: `emergency_shutdown()` and `is_shutdown()` methods with threading.Event
+- Re-entrancy protection: `_can_log_safely()`, `_enter_logging_context()`, `_exit_logging_context()` with depth tracking
+- Rich integration: Optional Rich console with graceful fallback to plain text
+- Added `rich>=13.0.0` to pyproject.toml dependencies
+- 36 unit tests in `tests/test_verbose_logger.py`
+- Exported in package `__init__.py`
+
+**Constraint:** `-v/--verbose` flag behavior must remain consistent. Preserved.
 
 ### 7. Statistics Improvements (LOW)
 **Source:** `/home/arch/code/loop/ralph/utils/stats.py`
