@@ -11,8 +11,14 @@
 
 ### Final Test Results
 ```
-305 passed, 8 skipped in 1.36s
+305 passed, 8 skipped in 1.34s
 ```
+
+### Pull Request
+**PR #5**: https://github.com/mikeyobrien/ralph-orchestrator/pull/5
+- Branch: `feature/acp-support`
+- 21 commits, +9,743 lines across 33 files
+- Ready for review
 
 ---
 
