@@ -101,10 +101,11 @@ class RalphOrchestrator:
         
         # Initialize adapters
         self.adapters = self._initialize_adapters()
-        self.current_adapter = self.adapters.get(primary_tool)
+        self.current_adapter = self.adapters.get(self.primary_tool)
         
         if not self.current_adapter:
-            raise ValueError(f"Unknown tool: {primary_tool}")
+            logger.error(f"DEBUG: primary_tool={self.primary_tool}, adapters={list(self.adapters.keys())}")
+            raise ValueError(f"Unknown tool: {self.primary_tool}")
         
         # Signal handling - use basic signal registration here
         # The async handlers will be set up when arun() is called

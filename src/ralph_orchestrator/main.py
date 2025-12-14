@@ -407,7 +407,7 @@ def main():
     parser.add_argument(
         "--agent", "-a",
         type=str,
-        choices=["claude", "q", "gemini", "auto"],
+        choices=["claude", "q", "gemini", "acp", "auto"],
         default="auto",
         help="AI agent to use (default: auto-detect)"
     )
