@@ -36,6 +36,7 @@ env/
 
 # Ralph specific
 .ralph/
+.sop/
 .agent/
 .logs/
 prompts/
