@@ -232,15 +232,14 @@ class ACPHandlers:
     def handle_request_permission(self, params: dict) -> dict:
         """Handle a permission request from an agent.
 
-        When permission is granted for a toolCall, this method also executes
-        the requested action (file write, terminal command, etc.) and returns
-        the result.
+        Returns ACP-compliant response with nested outcome structure.
+        The agent handles tool execution after receiving permission.
 
         Args:
-            params: Permission request parameters including toolCall with rawInput.
+            params: Permission request parameters including options list.
 
         Returns:
-            Dict with 'approved' key and optionally 'result' for executed actions.
+            Dict with result.outcome.outcome (selected/cancelled) and optionId.
         """
         request = PermissionRequest.from_params(params)
         result = self._evaluate_permission(request)
@@ -251,83 +250,42 @@ class ACPHandlers:
         # Store in history
         self._history.append((request, result))
 
-        response = result.to_dict()
+        # Extract options from params to find the appropriate optionId
+        options = params.get("options", [])
 
-        # If approved and there's a toolCall, execute the action
         if result.approved:
-            tool_call = params.get("toolCall", {})
-            raw_input = tool_call.get("rawInput", {})
-            title = tool_call.get("title", "")
-            tool_call_id = tool_call.get("toolCallId", "")
+            # Find first "allow" option to use as optionId
+            selected_option_id = None
+            for option in options:
+                if option.get("type") == "allow":
+                    selected_option_id = option.get("id")
+                    break
 
-            # Determine action type from toolCallId, title, or rawInput
-            is_shell_command = (
-                "run_shell_command" in tool_call_id or
-                "shell" in tool_call_id.lower() or
-                "command" in raw_input or
-                "Bash" in title or
-                "Terminal" in title
-            )
-            is_write = "Write" in title or ("file_path" in raw_input and "content" in raw_input)
-            is_read = "Read" in title or ("file_path" in raw_input and "content" not in raw_input)
+            # Fallback to first option if no "allow" type found
+            if not selected_option_id and options:
+                selected_option_id = options[0].get("id", "proceed_once")
+            elif not selected_option_id:
+                # Default if no options provided
+                selected_option_id = "proceed_once"
 
-            if is_write:
-                # File write operation
-                file_path = raw_input.get("file_path") or raw_input.get("path")
-                content = raw_input.get("content", "")
-                if file_path:
-                    write_result = self.handle_write_file({
-                        "path": file_path,
-                        "content": content
-                    })
-                    if "error" not in write_result:
-                        response["outcome"] = write_result
-                    else:
-                        response["outcome"] = {"error": write_result.get("error")}
-
-            elif is_read:
-                # File read operation
-                file_path = raw_input.get("file_path") or raw_input.get("path")
-                if file_path:
-                    read_result = self.handle_read_file({"path": file_path})
-                    if "error" not in read_result:
-                        response["outcome"] = read_result
-                    else:
-                        response["outcome"] = {"error": read_result.get("error")}
-
-            elif is_shell_command:
-                # Shell command - extract from title or rawInput and execute
-                command = raw_input.get("command", "")
-                if not command and title:
-                    # Extract command from title (format: "command [current working directory ...]")
-                    if "[current working directory" in title:
-                        command = title.split("[current working directory")[0].strip()
-                    else:
-                        command = title.strip()
-
-                if command:
-                    # Execute the command directly and return result
-                    import subprocess
-                    try:
-                        result_proc = subprocess.run(
-                            command,
-                            shell=True,
-                            capture_output=True,
-                            text=True,
-                            timeout=30,
-                            cwd=os.getcwd()
-                        )
-                        response["outcome"] = {
-                            "exitCode": result_proc.returncode,
-                            "stdout": result_proc.stdout,
-                            "stderr": result_proc.stderr,
-                        }
-                    except subprocess.TimeoutExpired:
-                        response["outcome"] = {"error": "Command timed out"}
-                    except Exception as e:
-                        response["outcome"] = {"error": str(e)}
-
-        return response
+            # Return ACP-compliant response structure
+            return {
+                "result": {
+                    "outcome": {
+                        "outcome": "selected",
+                        "optionId": selected_option_id
+                    }
+                }
+            }
+        else:
+            # Permission denied - return cancelled outcome
+            return {
+                "result": {
+                    "outcome": {
+                        "outcome": "cancelled"
+                    }
+                }
+            }
 
     def _evaluate_permission(self, request: PermissionRequest) -> PermissionResult:
         """Evaluate a permission request based on current mode.

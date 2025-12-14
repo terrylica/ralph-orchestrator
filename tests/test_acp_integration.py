@@ -211,10 +211,12 @@ class TestACPMockedIntegration:
         result = adapter._handle_permission_request({
             "operation": "fs/read_text_file",
             "params": {"path": "/tmp/test.txt"},
-            "reason": "Read file for analysis"
+            "reason": "Read file for analysis",
+            "options": [{"id": "allow", "type": "allow"}]
         })
 
-        assert result["approved"] is True
+        assert result["result"]["outcome"]["outcome"] == "selected"
+        assert result["result"]["outcome"]["optionId"] == "allow"
 
     @pytest.mark.asyncio
     async def test_permission_handling_deny_all(self):
@@ -225,10 +227,11 @@ class TestACPMockedIntegration:
         result = adapter._handle_permission_request({
             "operation": "fs/write_text_file",
             "params": {"path": "/tmp/test.txt", "content": "data"},
-            "reason": "Write test file"
+            "reason": "Write test file",
+            "options": [{"id": "deny", "type": "deny"}]
         })
 
-        assert result["approved"] is False
+        assert result["result"]["outcome"]["outcome"] == "cancelled"
 
     @pytest.mark.asyncio
     async def test_permission_handling_allowlist(self):
@@ -242,25 +245,28 @@ class TestACPMockedIntegration:
         result = adapter._handle_permission_request({
             "operation": "fs/read_text_file",
             "params": {"path": "/tmp/test.txt"},
-            "reason": "Read file"
+            "reason": "Read file",
+            "options": [{"id": "allow", "type": "allow"}]
         })
-        assert result["approved"] is True
+        assert result["result"]["outcome"]["outcome"] == "selected"
 
         # Should deny write
         result = adapter._handle_permission_request({
             "operation": "fs/write_text_file",
             "params": {"path": "/tmp/test.txt", "content": "data"},
-            "reason": "Write file"
+            "reason": "Write file",
+            "options": [{"id": "deny", "type": "deny"}]
         })
-        assert result["approved"] is False
+        assert result["result"]["outcome"]["outcome"] == "cancelled"
 
         # Should approve terminal
         result = adapter._handle_permission_request({
             "operation": "terminal/execute",
             "params": {"command": ["ls"]},
-            "reason": "List files"
+            "reason": "List files",
+            "options": [{"id": "allow", "type": "allow"}]
         })
-        assert result["approved"] is True
+        assert result["result"]["outcome"]["outcome"] == "selected"
 
 
 class TestACPFileOperationsMocked:

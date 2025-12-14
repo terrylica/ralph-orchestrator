@@ -52,13 +52,13 @@ class TestPermissionResult:
     """Tests for PermissionResult dataclass."""
 
     def test_to_dict_approved(self):
-        """Test to_dict for approved result."""
+        """Test to_dict for approved result (legacy - still used internally)."""
         result = PermissionResult(approved=True, reason="test", mode="auto_approve")
 
         assert result.to_dict() == {"approved": True}
 
     def test_to_dict_denied(self):
-        """Test to_dict for denied result."""
+        """Test to_dict for denied result (legacy - still used internally)."""
         result = PermissionResult(approved=False, reason="test", mode="deny_all")
 
         assert result.to_dict() == {"approved": False}
@@ -117,10 +117,21 @@ class TestACPHandlersAutoApprove:
         handlers = ACPHandlers(permission_mode="auto_approve")
 
         result = handlers.handle_request_permission(
-            {"operation": "fs/read_text_file", "path": "/etc/passwd"}
+            {
+                "operation": "fs/read_text_file",
+                "path": "/etc/passwd",
+                "options": [{"id": "proceed_once", "type": "allow"}]
+            }
         )
 
-        assert result == {"approved": True}
+        assert result == {
+            "result": {
+                "outcome": {
+                    "outcome": "selected",
+                    "optionId": "proceed_once"
+                }
+            }
+        }
 
     def test_auto_approve_any_operation(self):
         """Test auto_approve mode approves any operation."""
@@ -134,8 +145,18 @@ class TestACPHandlersAutoApprove:
         ]
 
         for op in operations:
-            result = handlers.handle_request_permission({"operation": op})
-            assert result == {"approved": True}
+            result = handlers.handle_request_permission({
+                "operation": op,
+                "options": [{"id": "allow", "type": "allow"}]
+            })
+            assert result == {
+                "result": {
+                    "outcome": {
+                        "outcome": "selected",
+                        "optionId": "allow"
+                    }
+                }
+            }
 
 
 class TestACPHandlersDenyAll:
@@ -146,10 +167,20 @@ class TestACPHandlersDenyAll:
         handlers = ACPHandlers(permission_mode="deny_all")
 
         result = handlers.handle_request_permission(
-            {"operation": "fs/read_text_file", "path": "/test/file.txt"}
+            {
+                "operation": "fs/read_text_file",
+                "path": "/test/file.txt",
+                "options": [{"id": "deny", "type": "deny"}]
+            }
         )
 
-        assert result == {"approved": False}
+        assert result == {
+            "result": {
+                "outcome": {
+                    "outcome": "cancelled"
+                }
+            }
+        }
 
     def test_deny_all_any_operation(self):
         """Test deny_all mode denies any operation."""
@@ -163,8 +194,17 @@ class TestACPHandlersDenyAll:
         ]
 
         for op in operations:
-            result = handlers.handle_request_permission({"operation": op})
-            assert result == {"approved": False}
+            result = handlers.handle_request_permission({
+                "operation": op,
+                "options": [{"id": "deny", "type": "deny"}]
+            })
+            assert result == {
+                "result": {
+                    "outcome": {
+                        "outcome": "cancelled"
+                    }
+                }
+            }
 
 
 class TestACPHandlersAllowlist:
@@ -178,10 +218,20 @@ class TestACPHandlersAllowlist:
         )
 
         result = handlers.handle_request_permission(
-            {"operation": "fs/read_text_file"}
+            {
+                "operation": "fs/read_text_file",
+                "options": [{"id": "allow_read", "type": "allow"}]
+            }
         )
 
-        assert result == {"approved": True}
+        assert result == {
+            "result": {
+                "outcome": {
+                    "outcome": "selected",
+                    "optionId": "allow_read"
+                }
+            }
+        }
 
     def test_allowlist_no_match(self):
         """Test allowlist denies when no match."""
@@ -191,10 +241,19 @@ class TestACPHandlersAllowlist:
         )
 
         result = handlers.handle_request_permission(
-            {"operation": "fs/write_text_file"}
+            {
+                "operation": "fs/write_text_file",
+                "options": [{"id": "deny_write", "type": "deny"}]
+            }
         )
 
-        assert result == {"approved": False}
+        assert result == {
+            "result": {
+                "outcome": {
+                    "outcome": "cancelled"
+                }
+            }
+        }
 
     def test_allowlist_glob_pattern(self):
         """Test allowlist with glob pattern."""
@@ -204,18 +263,25 @@ class TestACPHandlersAllowlist:
         )
 
         # Should match
-        assert handlers.handle_request_permission(
-            {"operation": "fs/read_text_file"}
-        ) == {"approved": True}
+        result = handlers.handle_request_permission({
+            "operation": "fs/read_text_file",
+            "options": [{"id": "allow", "type": "allow"}]
+        })
+        assert result["result"]["outcome"]["outcome"] == "selected"
+        assert result["result"]["outcome"]["optionId"] == "allow"
 
-        assert handlers.handle_request_permission(
-            {"operation": "fs/write_text_file"}
-        ) == {"approved": True}
+        result = handlers.handle_request_permission({
+            "operation": "fs/write_text_file",
+            "options": [{"id": "allow", "type": "allow"}]
+        })
+        assert result["result"]["outcome"]["outcome"] == "selected"
 
         # Should not match
-        assert handlers.handle_request_permission(
-            {"operation": "terminal/execute"}
-        ) == {"approved": False}
+        result = handlers.handle_request_permission({
+            "operation": "terminal/execute",
+            "options": [{"id": "deny", "type": "deny"}]
+        })
+        assert result["result"]["outcome"]["outcome"] == "cancelled"
 
     def test_allowlist_question_mark_pattern(self):
         """Test allowlist with question mark pattern."""
@@ -225,14 +291,18 @@ class TestACPHandlersAllowlist:
         )
 
         # Should match single character
-        assert handlers.handle_request_permission(
-            {"operation": "fs/r_text_file"}
-        ) == {"approved": True}
+        result = handlers.handle_request_permission({
+            "operation": "fs/r_text_file",
+            "options": [{"id": "allow", "type": "allow"}]
+        })
+        assert result["result"]["outcome"]["outcome"] == "selected"
 
         # Should not match multiple characters
-        assert handlers.handle_request_permission(
-            {"operation": "fs/read_text_file"}
-        ) == {"approved": False}
+        result = handlers.handle_request_permission({
+            "operation": "fs/read_text_file",
+            "options": [{"id": "deny", "type": "deny"}]
+        })
+        assert result["result"]["outcome"]["outcome"] == "cancelled"
 
     def test_allowlist_regex_pattern(self):
         """Test allowlist with regex pattern."""
@@ -242,14 +312,18 @@ class TestACPHandlersAllowlist:
         )
 
         # Should match regex
-        assert handlers.handle_request_permission(
-            {"operation": "fs/read_text_file"}
-        ) == {"approved": True}
+        result = handlers.handle_request_permission({
+            "operation": "fs/read_text_file",
+            "options": [{"id": "allow", "type": "allow"}]
+        })
+        assert result["result"]["outcome"]["outcome"] == "selected"
 
         # Should not match
-        assert handlers.handle_request_permission(
-            {"operation": "terminal/execute"}
-        ) == {"approved": False}
+        result = handlers.handle_request_permission({
+            "operation": "terminal/execute",
+            "options": [{"id": "deny", "type": "deny"}]
+        })
+        assert result["result"]["outcome"]["outcome"] == "cancelled"
 
     def test_allowlist_multiple_patterns(self):
         """Test allowlist with multiple patterns."""
@@ -259,19 +333,25 @@ class TestACPHandlersAllowlist:
         )
 
         # Should match first pattern
-        assert handlers.handle_request_permission(
-            {"operation": "fs/read_text_file"}
-        ) == {"approved": True}
+        result = handlers.handle_request_permission({
+            "operation": "fs/read_text_file",
+            "options": [{"id": "allow", "type": "allow"}]
+        })
+        assert result["result"]["outcome"]["outcome"] == "selected"
 
         # Should match second pattern
-        assert handlers.handle_request_permission(
-            {"operation": "terminal/execute"}
-        ) == {"approved": True}
+        result = handlers.handle_request_permission({
+            "operation": "terminal/execute",
+            "options": [{"id": "allow", "type": "allow"}]
+        })
+        assert result["result"]["outcome"]["outcome"] == "selected"
 
         # Should not match any
-        assert handlers.handle_request_permission(
-            {"operation": "fs/write_text_file"}
-        ) == {"approved": False}
+        result = handlers.handle_request_permission({
+            "operation": "fs/write_text_file",
+            "options": [{"id": "deny", "type": "deny"}]
+        })
+        assert result["result"]["outcome"]["outcome"] == "cancelled"
 
     def test_allowlist_empty(self):
         """Test empty allowlist denies everything."""
@@ -280,9 +360,11 @@ class TestACPHandlersAllowlist:
             permission_allowlist=[],
         )
 
-        assert handlers.handle_request_permission(
-            {"operation": "fs/read_text_file"}
-        ) == {"approved": False}
+        result = handlers.handle_request_permission({
+            "operation": "fs/read_text_file",
+            "options": [{"id": "deny", "type": "deny"}]
+        })
+        assert result["result"]["outcome"]["outcome"] == "cancelled"
 
     def test_allowlist_invalid_regex(self):
         """Test allowlist handles invalid regex gracefully."""
@@ -292,9 +374,11 @@ class TestACPHandlersAllowlist:
         )
 
         # Should not match (invalid regex returns False)
-        assert handlers.handle_request_permission(
-            {"operation": "[invalid"}
-        ) == {"approved": False}
+        result = handlers.handle_request_permission({
+            "operation": "[invalid",
+            "options": [{"id": "deny", "type": "deny"}]
+        })
+        assert result["result"]["outcome"]["outcome"] == "cancelled"
 
 
 class TestACPHandlersInteractive:
@@ -305,11 +389,12 @@ class TestACPHandlersInteractive:
         handlers = ACPHandlers(permission_mode="interactive")
 
         with patch("sys.stdin.isatty", return_value=False):
-            result = handlers.handle_request_permission(
-                {"operation": "fs/read_text_file"}
-            )
+            result = handlers.handle_request_permission({
+                "operation": "fs/read_text_file",
+                "options": [{"id": "deny", "type": "deny"}]
+            })
 
-        assert result == {"approved": False}
+        assert result["result"]["outcome"]["outcome"] == "cancelled"
 
     def test_interactive_user_approves(self):
         """Test interactive mode with user approval."""
@@ -317,11 +402,13 @@ class TestACPHandlersInteractive:
 
         with patch("sys.stdin.isatty", return_value=True):
             with patch("builtins.input", return_value="y"):
-                result = handlers.handle_request_permission(
-                    {"operation": "fs/read_text_file"}
-                )
+                result = handlers.handle_request_permission({
+                    "operation": "fs/read_text_file",
+                    "options": [{"id": "allow", "type": "allow"}]
+                })
 
-        assert result == {"approved": True}
+        assert result["result"]["outcome"]["outcome"] == "selected"
+        assert result["result"]["outcome"]["optionId"] == "allow"
 
     def test_interactive_user_denies(self):
         """Test interactive mode with user denial."""
@@ -329,11 +416,12 @@ class TestACPHandlersInteractive:
 
         with patch("sys.stdin.isatty", return_value=True):
             with patch("builtins.input", return_value="n"):
-                result = handlers.handle_request_permission(
-                    {"operation": "fs/read_text_file"}
-                )
+                result = handlers.handle_request_permission({
+                    "operation": "fs/read_text_file",
+                    "options": [{"id": "deny", "type": "deny"}]
+                })
 
-        assert result == {"approved": False}
+        assert result["result"]["outcome"]["outcome"] == "cancelled"
 
     def test_interactive_empty_input_denies(self):
         """Test interactive mode denies on empty input."""
@@ -341,11 +429,12 @@ class TestACPHandlersInteractive:
 
         with patch("sys.stdin.isatty", return_value=True):
             with patch("builtins.input", return_value=""):
-                result = handlers.handle_request_permission(
-                    {"operation": "fs/read_text_file"}
-                )
+                result = handlers.handle_request_permission({
+                    "operation": "fs/read_text_file",
+                    "options": [{"id": "deny", "type": "deny"}]
+                })
 
-        assert result == {"approved": False}
+        assert result["result"]["outcome"]["outcome"] == "cancelled"
 
     def test_interactive_yes_variations(self):
         """Test interactive mode accepts various yes inputs."""
@@ -354,10 +443,12 @@ class TestACPHandlersInteractive:
         for yes_input in ["y", "Y", "yes", "YES", "Yes"]:
             with patch("sys.stdin.isatty", return_value=True):
                 with patch("builtins.input", return_value=yes_input):
-                    result = handlers.handle_request_permission(
-                        {"operation": "fs/read_text_file"}
-                    )
-                    assert result == {"approved": True}, f"Failed for input: {yes_input}"
+                    result = handlers.handle_request_permission({
+                        "operation": "fs/read_text_file",
+                        "options": [{"id": "allow", "type": "allow"}]
+                    })
+                    assert result["result"]["outcome"]["outcome"] == "selected", f"Failed for input: {yes_input}"
+                    assert result["result"]["outcome"]["optionId"] == "allow"
 
     def test_interactive_keyboard_interrupt(self):
         """Test interactive mode handles keyboard interrupt."""
@@ -365,11 +456,12 @@ class TestACPHandlersInteractive:
 
         with patch("sys.stdin.isatty", return_value=True):
             with patch("builtins.input", side_effect=KeyboardInterrupt):
-                result = handlers.handle_request_permission(
-                    {"operation": "fs/read_text_file"}
-                )
+                result = handlers.handle_request_permission({
+                    "operation": "fs/read_text_file",
+                    "options": [{"id": "deny", "type": "deny"}]
+                })
 
-        assert result == {"approved": False}
+        assert result["result"]["outcome"]["outcome"] == "cancelled"
 
     def test_interactive_eof_error(self):
         """Test interactive mode handles EOF error."""
@@ -377,11 +469,12 @@ class TestACPHandlersInteractive:
 
         with patch("sys.stdin.isatty", return_value=True):
             with patch("builtins.input", side_effect=EOFError):
-                result = handlers.handle_request_permission(
-                    {"operation": "fs/read_text_file"}
-                )
+                result = handlers.handle_request_permission({
+                    "operation": "fs/read_text_file",
+                    "options": [{"id": "deny", "type": "deny"}]
+                })
 
-        assert result == {"approved": False}
+        assert result["result"]["outcome"]["outcome"] == "cancelled"
 
 
 class TestACPHandlersHistory:
@@ -504,15 +597,17 @@ class TestACPHandlersIntegration:
         )
 
         # Test via internal handler
-        result = adapter._handle_permission_request(
-            {"operation": "fs/read_text_file"}
-        )
-        assert result == {"approved": True}
+        result = adapter._handle_permission_request({
+            "operation": "fs/read_text_file",
+            "options": [{"id": "allow", "type": "allow"}]
+        })
+        assert result["result"]["outcome"]["outcome"] == "selected"
 
-        result = adapter._handle_permission_request(
-            {"operation": "fs/write_text_file"}
-        )
-        assert result == {"approved": False}
+        result = adapter._handle_permission_request({
+            "operation": "fs/write_text_file",
+            "options": [{"id": "deny", "type": "deny"}]
+        })
+        assert result["result"]["outcome"]["outcome"] == "cancelled"
 
     def test_adapter_permission_stats(self):
         """Test ACPAdapter provides permission statistics."""
@@ -552,10 +647,12 @@ class TestACPHandlersIntegration:
 
         adapter = ACPAdapter.from_config(config)
 
-        result = adapter._handle_permission_request(
-            {"operation": "fs/read_text_file"}
-        )
-        assert result == {"approved": True}
+        result = adapter._handle_permission_request({
+            "operation": "fs/read_text_file",
+            "options": [{"id": "proceed_once", "type": "allow"}]
+        })
+        assert result["result"]["outcome"]["outcome"] == "selected"
+        assert result["result"]["outcome"]["optionId"] == "proceed_once"
 
 
 class TestACPHandlersReadFile:
