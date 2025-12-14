@@ -32,8 +32,10 @@ Configuration file support is planned for future releases.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `--agent` | `auto` | AI agent to use: `claude`, `q`, `gemini`, or `auto` |
+| `--agent` | `auto` | AI agent to use: `claude`, `q`, `gemini`, `acp`, or `auto` |
 | `--agent-args` | None | Additional arguments to pass to the agent |
+| `--acp-agent` | `gemini` | ACP agent command (for `-a acp`) |
+| `--acp-permission-mode` | `auto_approve` | Permission handling: `auto_approve`, `deny_all`, `allowlist`, `interactive` |
 
 **Example:**
 ```bash
@@ -45,6 +47,12 @@ python ralph_orchestrator.py --agent auto
 
 # Pass additional arguments to agent
 python ralph_orchestrator.py --agent claude --agent-args "--model claude-3-sonnet"
+
+# Use ACP-compliant agent
+python ralph_orchestrator.py --agent acp --acp-agent gemini
+
+# Use ACP with specific permission mode
+python ralph_orchestrator.py --agent acp --acp-agent gemini --acp-permission-mode deny_all
 ```
 
 ### Prompt Configuration
@@ -174,6 +182,70 @@ python ralph_orchestrator.py --retry-delay 10
 
 # Fast retry for local agents
 python ralph_orchestrator.py --retry-delay 1
+```
+
+## ACP (Agent Client Protocol) Configuration
+
+### ACP Options
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--acp-agent` | `gemini` | Command to run the ACP-compliant agent |
+| `--acp-permission-mode` | `auto_approve` | Permission handling mode |
+
+### Permission Modes
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| `auto_approve` | Approve all tool requests automatically | Trusted environments, CI/CD |
+| `deny_all` | Deny all tool requests | Testing, sandboxed execution |
+| `allowlist` | Only approve matching patterns | Production with specific tools |
+| `interactive` | Prompt user for each request | Development, manual oversight |
+
+### Configuration File (ralph.yml)
+
+```yaml
+adapters:
+  acp:
+    enabled: true
+    timeout: 300
+    tool_permissions:
+      agent_command: gemini        # ACP agent CLI command
+      agent_args: []               # Additional CLI arguments
+      permission_mode: auto_approve
+      permission_allowlist:        # For allowlist mode
+        - "fs/read_text_file:*.py"
+        - "fs/write_text_file:src/*"
+        - "terminal/create:pytest*"
+```
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `RALPH_ACP_AGENT` | Override `agent_command` |
+| `RALPH_ACP_PERMISSION_MODE` | Override `permission_mode` |
+| `RALPH_ACP_TIMEOUT` | Override `timeout` (integer) |
+
+**Example:**
+```bash
+# Using environment variables
+export RALPH_ACP_AGENT=gemini
+export RALPH_ACP_PERMISSION_MODE=deny_all
+python ralph_orchestrator.py --agent acp
+```
+
+### ACP Profile
+
+For ACP-compliant agents:
+
+```bash
+python ralph_orchestrator.py \
+  --agent acp \
+  --acp-agent gemini \
+  --acp-permission-mode auto_approve \
+  --max-iterations 100 \
+  --max-runtime 14400
 ```
 
 ## Configuration Profiles

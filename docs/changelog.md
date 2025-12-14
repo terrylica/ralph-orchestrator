@@ -21,6 +21,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Race condition in state file updates
 - Memory leak in long-running sessions
 
+## [1.2.0] - 2025-12
+
+### Added
+- **ACP (Agent Client Protocol) Support**: Full integration with ACP-compliant agents
+  - JSON-RPC 2.0 message protocol implementation
+  - Permission handling with four modes: `auto_approve`, `deny_all`, `allowlist`, `interactive`
+  - File operations (`fs/read_text_file`, `fs/write_text_file`) with security validation
+  - Terminal operations (`terminal/create`, `terminal/output`, `terminal/wait_for_exit`, `terminal/kill`, `terminal/release`)
+  - Session management and streaming updates
+  - Agent scratchpad mechanism for context persistence across iterations
+- New CLI options: `--acp-agent`, `--acp-permission-mode`
+- ACP configuration support in `ralph.yml` under `adapters.acp`
+- Environment variable overrides: `RALPH_ACP_AGENT`, `RALPH_ACP_PERMISSION_MODE`, `RALPH_ACP_TIMEOUT`
+- 305+ new ACP-specific tests
+
+### Changed
+- Expanded test suite to 920+ tests
+- Updated documentation for ACP support
+
+## [1.1.0] - 2025-12
+
+### Added
+- Async-first architecture for non-blocking operations
+- Thread-safe async logging with rotation and security masking
+- Rich terminal output with syntax highlighting
+- Inline prompt support (`-p "your task"`)
+- Claude Agent SDK integration with MCP server support
+- Async git checkpointing (non-blocking)
+- Security validation system with path traversal protection
+- Sensitive data masking in logs (API keys, tokens, passwords)
+- Thread-safe configuration with RLock
+- VerboseLogger with session metrics and re-entrancy protection
+- Iteration statistics tracking with memory-efficient storage
+
+### Changed
+- Expanded test suite to 620+ tests
+- Improved error handling with ClaudeErrorFormatter
+- Enhanced signal handling with subprocess-first cleanup
+
+### Fixed
+- Division by zero in countdown progress bar
+- Process reference leak in QChatAdapter
+- Blocking file I/O in async functions
+- Exception chaining in error handlers
+
 ## [1.0.3] - 2025-09-07
 
 ### Added

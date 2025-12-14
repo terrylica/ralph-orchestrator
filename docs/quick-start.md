@@ -35,6 +35,15 @@ Ralph works with multiple AI agents. Install at least one:
     # Configure with your API key
     ```
 
+=== "ACP Agent"
+
+    ```bash
+    # Any ACP-compliant agent can be used
+    # Example: Gemini CLI with ACP mode
+    npm install -g @google/gemini-cli
+    # Run with: ralph run -a acp --acp-agent gemini
+    ```
+
 ## Step 2: Clone Ralph Orchestrator
 
 ```bash
@@ -72,6 +81,9 @@ python ralph_orchestrator.py --prompt PROMPT.md
 
 # Or specify an agent explicitly
 python ralph_orchestrator.py --agent claude --prompt PROMPT.md
+
+# Or use an ACP-compliant agent
+python ralph_orchestrator.py --agent acp --acp-agent gemini --prompt PROMPT.md
 ```
 
 ## Step 5: Monitor Progress
@@ -163,7 +175,7 @@ Now that you've run your first Ralph task:
 
 If Ralph can't find an AI agent:
 ```bash
-ERROR: No AI agents detected. Please install claude, q, or gemini.
+ERROR: No AI agents detected. Please install claude, q, gemini, or an ACP-compliant agent.
 ```
 
 **Solution**: Install one of the supported agents (see Step 1)

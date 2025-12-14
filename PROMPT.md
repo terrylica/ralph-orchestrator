@@ -1,5 +1,16 @@
 # Task: Implement ACP Adapter for Ralph-Orchestrator
 
+## ✅ DOCUMENTATION UPDATED (Dec 14, 2025)
+
+Updated documentation to reflect ACP v1.2.0 features:
+- `docs/index.md`: Updated version badge to 1.2.0, test count to 920+, added ACP to multi-agent support, added ACP Protocol Support feature card
+- `docs/changelog.md`: Added v1.1.0 and v1.2.0 entries with complete feature lists
+- `docs/quick-start.md`: Added ACP agent installation tab and usage examples
+- `docs/guide/configuration.md`: Added comprehensive ACP configuration section with permission modes, YAML config, and environment variables
+- `docs/api/cli.md`: Updated CLI examples, argument parser, and shell completion scripts for ACP options
+
+---
+
 ## ✅ TASK COMPLETE
 
 **All 12 implementation steps completed successfully!**

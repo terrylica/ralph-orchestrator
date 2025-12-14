@@ -6,9 +6,9 @@
 
 *Put your AI agent in a loop until the task is done*
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/mikeyobrien/ralph-orchestrator/releases)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue)](https://github.com/mikeyobrien/ralph-orchestrator/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-18%20passing-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-920%2B%20passing-brightgreen)](tests/)
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
@@ -25,8 +25,8 @@ Based on Huntley's technique, this implementation provides enterprise-grade safe
 
 <div class="grid cards" markdown>
 
-- **🤖 Multi-Agent Support**  
-  Works seamlessly with Claude, Q Chat, and Gemini CLI tools with automatic detection
+- **🤖 Multi-Agent Support**
+  Works seamlessly with Claude, Q Chat, Gemini CLI, and ACP-compliant agents with automatic detection
 
 - **💰 Cost Management**  
   Real-time token tracking, cost calculation, and configurable spending limits
@@ -40,8 +40,11 @@ Based on Huntley's technique, this implementation provides enterprise-grade safe
 - **🔄 Resilient Execution**  
   Automatic retries, circuit breakers, and state persistence
 
-- **💾 Git Checkpointing**  
+- **💾 Git Checkpointing**
   Version control integration for state recovery and history tracking
+
+- **🔌 ACP Protocol Support**
+  Full Agent Client Protocol integration with permission handling, file/terminal operations, and session management
 
 </div>
 

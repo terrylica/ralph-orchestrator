@@ -49,6 +49,8 @@ class RalphCLI:
 Examples:
   ralph run                    # Run with auto-detected agent
   ralph run -a claude          # Run with Claude
+  ralph run -a acp             # Run with ACP agent
+  ralph run -a acp --acp-agent gemini --acp-permission-mode auto_approve
   ralph status                 # Check current status
   ralph clean                  # Clean workspace
   ralph init                   # Initialize new project
@@ -86,9 +88,20 @@ Examples:
         )
         run_parser.add_argument(
             '--agent', '-a',
-            choices=['claude', 'q', 'gemini', 'auto'],
+            choices=['claude', 'q', 'gemini', 'acp', 'auto'],
             default='auto',
             help='AI agent to use'
+        )
+        run_parser.add_argument(
+            '--acp-agent',
+            default='gemini',
+            help='ACP agent command (for -a acp)'
+        )
+        run_parser.add_argument(
+            '--acp-permission-mode',
+            choices=['auto_approve', 'deny_all', 'allowlist', 'interactive'],
+            default='auto_approve',
+            help='Permission handling mode for ACP agent'
         )
         run_parser.add_argument(
             '--prompt', '-p',
@@ -481,7 +494,15 @@ _ralph_completion() {
             return 0
             ;;
         --agent|-a)
-            COMPREPLY=( $(compgen -W "claude q gemini auto" -- ${cur}) )
+            COMPREPLY=( $(compgen -W "claude q gemini acp auto" -- ${cur}) )
+            return 0
+            ;;
+        --acp-agent)
+            COMPREPLY=( $(compgen -c -- ${cur}) )
+            return 0
+            ;;
+        --acp-permission-mode)
+            COMPREPLY=( $(compgen -W "auto_approve deny_all allowlist interactive" -- ${cur}) )
             return 0
             ;;
         --format)
@@ -542,9 +563,11 @@ _ralph() {
             case $words[1] in
                 run)
                     _arguments \
-                        '--agent[AI agent]:agent:(claude q gemini auto)' \
+                        '--agent[AI agent]:agent:(claude q gemini acp auto)' \
                         '--prompt[Prompt file]:file:_files -g "*.md"' \
                         '--max-iterations[Max iterations]:number' \
+                        '--acp-agent[ACP agent command]:command' \
+                        '--acp-permission-mode[Permission mode]:mode:(auto_approve deny_all allowlist interactive)' \
                         '--dry-run[Test mode]'
                     ;;
                 config)
