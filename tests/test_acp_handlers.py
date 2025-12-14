@@ -125,11 +125,9 @@ class TestACPHandlersAutoApprove:
         )
 
         assert result == {
-            "result": {
-                "outcome": {
-                    "outcome": "selected",
-                    "optionId": "proceed_once"
-                }
+            "outcome": {
+                "outcome": "selected",
+                "optionId": "proceed_once"
             }
         }
 
@@ -150,11 +148,9 @@ class TestACPHandlersAutoApprove:
                 "options": [{"id": "allow", "type": "allow"}]
             })
             assert result == {
-                "result": {
-                    "outcome": {
-                        "outcome": "selected",
-                        "optionId": "allow"
-                    }
+                "outcome": {
+                    "outcome": "selected",
+                    "optionId": "allow"
                 }
             }
 
@@ -175,10 +171,8 @@ class TestACPHandlersDenyAll:
         )
 
         assert result == {
-            "result": {
-                "outcome": {
-                    "outcome": "cancelled"
-                }
+            "outcome": {
+                "outcome": "cancelled"
             }
         }
 
@@ -199,10 +193,8 @@ class TestACPHandlersDenyAll:
                 "options": [{"id": "deny", "type": "deny"}]
             })
             assert result == {
-                "result": {
-                    "outcome": {
-                        "outcome": "cancelled"
-                    }
+                "outcome": {
+                    "outcome": "cancelled"
                 }
             }
 
@@ -225,11 +217,9 @@ class TestACPHandlersAllowlist:
         )
 
         assert result == {
-            "result": {
-                "outcome": {
-                    "outcome": "selected",
-                    "optionId": "allow_read"
-                }
+            "outcome": {
+                "outcome": "selected",
+                "optionId": "allow_read"
             }
         }
 
@@ -248,10 +238,8 @@ class TestACPHandlersAllowlist:
         )
 
         assert result == {
-            "result": {
-                "outcome": {
-                    "outcome": "cancelled"
-                }
+            "outcome": {
+                "outcome": "cancelled"
             }
         }
 
@@ -267,21 +255,21 @@ class TestACPHandlersAllowlist:
             "operation": "fs/read_text_file",
             "options": [{"id": "allow", "type": "allow"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "selected"
-        assert result["result"]["outcome"]["optionId"] == "allow"
+        assert result["outcome"]["outcome"] == "selected"
+        assert result["outcome"]["optionId"] == "allow"
 
         result = handlers.handle_request_permission({
             "operation": "fs/write_text_file",
             "options": [{"id": "allow", "type": "allow"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "selected"
+        assert result["outcome"]["outcome"] == "selected"
 
         # Should not match
         result = handlers.handle_request_permission({
             "operation": "terminal/execute",
             "options": [{"id": "deny", "type": "deny"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "cancelled"
+        assert result["outcome"]["outcome"] == "cancelled"
 
     def test_allowlist_question_mark_pattern(self):
         """Test allowlist with question mark pattern."""
@@ -295,14 +283,14 @@ class TestACPHandlersAllowlist:
             "operation": "fs/r_text_file",
             "options": [{"id": "allow", "type": "allow"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "selected"
+        assert result["outcome"]["outcome"] == "selected"
 
         # Should not match multiple characters
         result = handlers.handle_request_permission({
             "operation": "fs/read_text_file",
             "options": [{"id": "deny", "type": "deny"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "cancelled"
+        assert result["outcome"]["outcome"] == "cancelled"
 
     def test_allowlist_regex_pattern(self):
         """Test allowlist with regex pattern."""
@@ -316,14 +304,14 @@ class TestACPHandlersAllowlist:
             "operation": "fs/read_text_file",
             "options": [{"id": "allow", "type": "allow"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "selected"
+        assert result["outcome"]["outcome"] == "selected"
 
         # Should not match
         result = handlers.handle_request_permission({
             "operation": "terminal/execute",
             "options": [{"id": "deny", "type": "deny"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "cancelled"
+        assert result["outcome"]["outcome"] == "cancelled"
 
     def test_allowlist_multiple_patterns(self):
         """Test allowlist with multiple patterns."""
@@ -337,21 +325,21 @@ class TestACPHandlersAllowlist:
             "operation": "fs/read_text_file",
             "options": [{"id": "allow", "type": "allow"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "selected"
+        assert result["outcome"]["outcome"] == "selected"
 
         # Should match second pattern
         result = handlers.handle_request_permission({
             "operation": "terminal/execute",
             "options": [{"id": "allow", "type": "allow"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "selected"
+        assert result["outcome"]["outcome"] == "selected"
 
         # Should not match any
         result = handlers.handle_request_permission({
             "operation": "fs/write_text_file",
             "options": [{"id": "deny", "type": "deny"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "cancelled"
+        assert result["outcome"]["outcome"] == "cancelled"
 
     def test_allowlist_empty(self):
         """Test empty allowlist denies everything."""
@@ -364,7 +352,7 @@ class TestACPHandlersAllowlist:
             "operation": "fs/read_text_file",
             "options": [{"id": "deny", "type": "deny"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "cancelled"
+        assert result["outcome"]["outcome"] == "cancelled"
 
     def test_allowlist_invalid_regex(self):
         """Test allowlist handles invalid regex gracefully."""
@@ -378,7 +366,7 @@ class TestACPHandlersAllowlist:
             "operation": "[invalid",
             "options": [{"id": "deny", "type": "deny"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "cancelled"
+        assert result["outcome"]["outcome"] == "cancelled"
 
 
 class TestACPHandlersInteractive:
@@ -394,7 +382,7 @@ class TestACPHandlersInteractive:
                 "options": [{"id": "deny", "type": "deny"}]
             })
 
-        assert result["result"]["outcome"]["outcome"] == "cancelled"
+        assert result["outcome"]["outcome"] == "cancelled"
 
     def test_interactive_user_approves(self):
         """Test interactive mode with user approval."""
@@ -407,8 +395,8 @@ class TestACPHandlersInteractive:
                     "options": [{"id": "allow", "type": "allow"}]
                 })
 
-        assert result["result"]["outcome"]["outcome"] == "selected"
-        assert result["result"]["outcome"]["optionId"] == "allow"
+        assert result["outcome"]["outcome"] == "selected"
+        assert result["outcome"]["optionId"] == "allow"
 
     def test_interactive_user_denies(self):
         """Test interactive mode with user denial."""
@@ -421,7 +409,7 @@ class TestACPHandlersInteractive:
                     "options": [{"id": "deny", "type": "deny"}]
                 })
 
-        assert result["result"]["outcome"]["outcome"] == "cancelled"
+        assert result["outcome"]["outcome"] == "cancelled"
 
     def test_interactive_empty_input_denies(self):
         """Test interactive mode denies on empty input."""
@@ -434,7 +422,7 @@ class TestACPHandlersInteractive:
                     "options": [{"id": "deny", "type": "deny"}]
                 })
 
-        assert result["result"]["outcome"]["outcome"] == "cancelled"
+        assert result["outcome"]["outcome"] == "cancelled"
 
     def test_interactive_yes_variations(self):
         """Test interactive mode accepts various yes inputs."""
@@ -447,8 +435,8 @@ class TestACPHandlersInteractive:
                         "operation": "fs/read_text_file",
                         "options": [{"id": "allow", "type": "allow"}]
                     })
-                    assert result["result"]["outcome"]["outcome"] == "selected", f"Failed for input: {yes_input}"
-                    assert result["result"]["outcome"]["optionId"] == "allow"
+                    assert result["outcome"]["outcome"] == "selected", f"Failed for input: {yes_input}"
+                    assert result["outcome"]["optionId"] == "allow"
 
     def test_interactive_keyboard_interrupt(self):
         """Test interactive mode handles keyboard interrupt."""
@@ -461,7 +449,7 @@ class TestACPHandlersInteractive:
                     "options": [{"id": "deny", "type": "deny"}]
                 })
 
-        assert result["result"]["outcome"]["outcome"] == "cancelled"
+        assert result["outcome"]["outcome"] == "cancelled"
 
     def test_interactive_eof_error(self):
         """Test interactive mode handles EOF error."""
@@ -474,7 +462,7 @@ class TestACPHandlersInteractive:
                     "options": [{"id": "deny", "type": "deny"}]
                 })
 
-        assert result["result"]["outcome"]["outcome"] == "cancelled"
+        assert result["outcome"]["outcome"] == "cancelled"
 
 
 class TestACPHandlersHistory:
@@ -601,13 +589,13 @@ class TestACPHandlersIntegration:
             "operation": "fs/read_text_file",
             "options": [{"id": "allow", "type": "allow"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "selected"
+        assert result["outcome"]["outcome"] == "selected"
 
         result = adapter._handle_permission_request({
             "operation": "fs/write_text_file",
             "options": [{"id": "deny", "type": "deny"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "cancelled"
+        assert result["outcome"]["outcome"] == "cancelled"
 
     def test_adapter_permission_stats(self):
         """Test ACPAdapter provides permission statistics."""
@@ -651,8 +639,8 @@ class TestACPHandlersIntegration:
             "operation": "fs/read_text_file",
             "options": [{"id": "proceed_once", "type": "allow"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "selected"
-        assert result["result"]["outcome"]["optionId"] == "proceed_once"
+        assert result["outcome"]["outcome"] == "selected"
+        assert result["outcome"]["optionId"] == "proceed_once"
 
 
 class TestACPHandlersReadFile:

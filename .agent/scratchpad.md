@@ -1,12 +1,12 @@
 # Scratchpad
 
-## Progress
-- Initialized /tmp/toy-app-calculator
-- Created main.py with `add` operation
-- Created test_calculator.py with tests for `add`
-- Tests passed
+## Current Task: Create simple Node.js REST API
 
-## Next Steps
-- Implement `subtract` operation and tests
-- Implement `multiply` operation and tests
-- Implement `divide` operation and tests
+### Progress
+- [x] Create /tmp/toy-app-api directory
+- [x] Create server.js (Node.js http server, GET /hello returns JSON)
+- [x] Create test.js (Node.js script using fetch to test server)
+- [x] Verify test passes
+
+### Next Steps
+- Task Completed.

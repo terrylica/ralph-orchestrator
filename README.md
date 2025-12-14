@@ -1,7 +1,7 @@
 # Ralph Orchestrator
 
 [![Documentation](https://img.shields.io/badge/docs-mkdocs-blue)](https://mikeyobrien.github.io/ralph-orchestrator/)
-[![Version](https://img.shields.io/badge/version-1.0.0-green)](https://github.com/mikeyobrien/ralph-orchestrator/releases)
+[![Version](https://img.shields.io/badge/version-1.2.0-green)](https://github.com/mikeyobrien/ralph-orchestrator/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](tests/)
 

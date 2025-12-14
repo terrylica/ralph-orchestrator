@@ -22,6 +22,7 @@ from .base import ToolAdapter, ToolResponse
 from .acp_client import ACPClient, ACPClientError
 from .acp_models import ACPAdapterConfig, ACPSession, UpdatePayload
 from .acp_handlers import ACPHandlers
+from ..output.console import RalphConsole
 
 
 # ACP Protocol version this adapter supports (integer per spec)
@@ -48,6 +49,7 @@ class ACPAdapter(ToolAdapter):
         timeout: int = 300,
         permission_mode: str = "auto_approve",
         permission_allowlist: Optional[list[str]] = None,
+        verbose: bool = False,
     ) -> None:
         """Initialize ACPAdapter.
 
@@ -57,12 +59,18 @@ class ACPAdapter(ToolAdapter):
             timeout: Request timeout in seconds (default: 300).
             permission_mode: Permission handling mode (default: auto_approve).
             permission_allowlist: Patterns for allowlist mode.
+            verbose: Enable verbose streaming output (default: False).
         """
         self.agent_command = agent_command
         self.agent_args = agent_args or []
         self.timeout = timeout
         self.permission_mode = permission_mode
         self.permission_allowlist = permission_allowlist or []
+        self.verbose = verbose
+        self._current_verbose = verbose  # Per-request verbose flag
+
+        # Console for verbose output
+        self._console = RalphConsole()
 
         # State
         self._client: Optional[ACPClient] = None
@@ -138,7 +146,8 @@ class ACPAdapter(ToolAdapter):
     def _signal_handler(self, signum: int, frame) -> None:
         """Handle shutdown signals.
 
-        Terminates running subprocess synchronously (signal-safe).
+        Terminates running subprocess synchronously (signal-safe),
+        then propagates to original handler (orchestrator).
 
         Args:
             signum: Signal number.
@@ -149,6 +158,11 @@ class ACPAdapter(ToolAdapter):
 
         # Kill subprocess synchronously (signal-safe)
         self.kill_subprocess_sync()
+
+        # Propagate signal to original handler (orchestrator's handler)
+        original = self._original_sigint if signum == signal.SIGINT else self._original_sigterm
+        if original and callable(original):
+            original(signum, frame)
 
     def kill_subprocess_sync(self) -> None:
         """Synchronously kill the agent subprocess (signal-safe).
@@ -201,10 +215,38 @@ class ACPAdapter(ToolAdapter):
         if self._initialized:
             return
 
+        # Build effective args, auto-adding ACP flags for known agents
+        effective_args = list(self.agent_args)
+
+        # Gemini CLI requires --experimental-acp flag to enter ACP mode
+        # Also add --yolo to auto-approve internal tool executions
+        # And --allowed-tools to enable native Gemini tools
+        agent_basename = os.path.basename(self.agent_command)
+        if agent_basename == "gemini":
+            if "--experimental-acp" not in effective_args:
+                logger.info("Auto-adding --experimental-acp flag for Gemini CLI")
+                effective_args.append("--experimental-acp")
+            if "--yolo" not in effective_args:
+                logger.info("Auto-adding --yolo flag for Gemini CLI tool execution")
+                effective_args.append("--yolo")
+            # Enable native Gemini tools for ACP mode
+            # Note: Excluding write_file and run_shell_command - they have bugs in ACP mode
+            # Gemini should fall back to ACP's fs/write_text_file and terminal/create
+            if "--allowed-tools" not in effective_args:
+                logger.info("Auto-adding --allowed-tools for Gemini CLI native tools")
+                effective_args.extend([
+                    "--allowed-tools",
+                    "list_directory",
+                    "read_many_files",
+                    "read_file",
+                    "web_fetch",
+                    "google_web_search",
+                ])
+
         # Create and start client
         self._client = ACPClient(
             command=self.agent_command,
-            args=self.agent_args,
+            args=effective_args,
             timeout=self.timeout,
         )
 
@@ -299,7 +341,70 @@ class ACPAdapter(ToolAdapter):
             else:
                 # Flat format
                 payload = UpdatePayload.from_dict(params)
+
+            # Stream to console if verbose (use per-request flag)
+            if self._current_verbose:
+                self._stream_update(payload)
+
             self._session.process_update(payload)
+
+    def _stream_update(self, payload: UpdatePayload) -> None:
+        """Stream session update to console.
+
+        Args:
+            payload: The update payload to stream.
+        """
+        kind = payload.kind
+
+        if kind == "agent_message_chunk":
+            # Stream agent output text
+            if payload.content:
+                self._console.print_message(payload.content)
+
+        elif kind == "agent_thought_chunk":
+            # Stream agent internal reasoning (dimmed)
+            if payload.content:
+                if self._console.console:
+                    self._console.console.print(
+                        f"[dim italic]{payload.content}[/dim italic]",
+                        end="",
+                    )
+                else:
+                    print(payload.content, end="")
+
+        elif kind == "tool_call":
+            # Show tool call start
+            tool_name = payload.tool_name or "unknown"
+            tool_id = payload.tool_call_id or "unknown"
+            self._console.print_separator()
+            self._console.print_status(f"TOOL CALL: {tool_name}", style="cyan bold")
+            self._console.print_info(f"ID: {tool_id[:12]}...")
+            if payload.arguments:
+                self._console.print_info("Arguments:")
+                for key, value in payload.arguments.items():
+                    value_str = str(value)
+                    if len(value_str) > 100:
+                        value_str = value_str[:97] + "..."
+                    self._console.print_info(f"  - {key}: {value_str}")
+
+        elif kind == "tool_call_update":
+            # Show tool call status update
+            tool_id = payload.tool_call_id or "unknown"
+            status = payload.status or "unknown"
+
+            if status == "completed":
+                self._console.print_success(f"Tool {tool_id[:12]}... completed")
+                if payload.result:
+                    result_str = str(payload.result)
+                    if len(result_str) > 200:
+                        result_str = result_str[:197] + "..."
+                    self._console.print_info(f"Result: {result_str}")
+            elif status == "failed":
+                self._console.print_error(f"Tool {tool_id[:12]}... failed")
+                if payload.error:
+                    self._console.print_error(f"Error: {payload.error}")
+            elif status == "running":
+                self._console.print_status(f"Tool {tool_id[:12]}... running", style="yellow")
 
     def _handle_request(self, method: str, params: dict) -> dict:
         """Handle requests from agent.
@@ -317,16 +422,18 @@ class ACPAdapter(ToolAdapter):
         Returns:
             Response result dict.
         """
+        logger.info("ACP REQUEST: method=%s", method)
         if method == "session/request_permission":
+            # Permission handler already returns ACP-compliant format
             return self._handle_permission_request(params)
 
-        # File operations
+        # File operations - return raw result (client wraps in JSON-RPC)
         if method == "fs/read_text_file":
             return self._handlers.handle_read_file(params)
         if method == "fs/write_text_file":
             return self._handlers.handle_write_file(params)
 
-        # Terminal operations
+        # Terminal operations - return raw result (client wraps in JSON-RPC)
         if method == "terminal/create":
             return self._handlers.handle_terminal_create(params)
         if method == "terminal/output":
@@ -339,7 +446,7 @@ class ACPAdapter(ToolAdapter):
             return self._handlers.handle_terminal_release(params)
 
         # Unknown request - log and return error
-        logger.warning("Unknown ACP request method: %s", method)
+        logger.warning("Unknown ACP request method: %s with params: %s", method, params)
         return {"error": {"code": -32601, "message": f"Method not found: {method}"}}
 
     def _handle_permission_request(self, params: dict) -> dict:
@@ -395,14 +502,24 @@ class ACPAdapter(ToolAdapter):
 
         Args:
             prompt: The prompt to execute.
-            **kwargs: Additional arguments.
+            **kwargs: Additional arguments (verbose: bool).
 
         Returns:
             ToolResponse with execution result.
         """
+        # Get verbose from kwargs (per-call override) without mutating instance state
+        verbose = kwargs.get("verbose", self.verbose)
+        # Store for use in _handle_notification during this request
+        self._current_verbose = verbose
+
         # Reset session state for new prompt (preserve session_id)
         if self._session:
             self._session.reset()
+
+        # Print header if verbose
+        if verbose:
+            self._console.print_header(f"ACP AGENT ({self.agent_command})")
+            self._console.print_status("Processing prompt...")
 
         # Build prompt array per ACP spec (ContentBlock format)
         prompt_blocks = [{"type": "text", "text": prompt}]
@@ -425,6 +542,9 @@ class ACPAdapter(ToolAdapter):
             if stop_reason == "error":
                 error_obj = response.get("error", {})
                 error_msg = error_obj.get("message", "Unknown error from agent")
+                if verbose:
+                    self._console.print_separator()
+                    self._console.print_error(f"Agent error: {error_msg}")
                 return ToolResponse(
                     success=False,
                     output=self._session.output if self._session else "",
@@ -439,6 +559,10 @@ class ACPAdapter(ToolAdapter):
 
             # Build successful response
             output = self._session.output if self._session else ""
+            if verbose:
+                self._console.print_separator()
+                tool_count = len(self._session.tool_calls) if self._session else 0
+                self._console.print_success(f"Agent completed (tools: {tool_count})")
             return ToolResponse(
                 success=True,
                 output=output,
@@ -453,6 +577,9 @@ class ACPAdapter(ToolAdapter):
             )
 
         except asyncio.TimeoutError:
+            if verbose:
+                self._console.print_separator()
+                self._console.print_error(f"Timeout after {self.timeout}s")
             return ToolResponse(
                 success=False,
                 output=self._session.output if self._session else "",

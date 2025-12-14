@@ -268,22 +268,18 @@ class ACPHandlers:
                 # Default if no options provided
                 selected_option_id = "proceed_once"
 
-            # Return ACP-compliant response structure
+            # Return raw result (client wraps in JSON-RPC response)
             return {
-                "result": {
-                    "outcome": {
-                        "outcome": "selected",
-                        "optionId": selected_option_id
-                    }
+                "outcome": {
+                    "outcome": "selected",
+                    "optionId": selected_option_id
                 }
             }
         else:
             # Permission denied - return cancelled outcome
             return {
-                "result": {
-                    "outcome": {
-                        "outcome": "cancelled"
-                    }
+                "outcome": {
+                    "outcome": "cancelled"
                 }
             }
 

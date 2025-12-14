@@ -162,10 +162,11 @@ class ACPClient:
             pass  # Expected during shutdown
         except Exception as e:
             logger.error("ACP read loop failed: %s", e, exc_info=True)
-            # Cancel all pending requests with the actual error
+        finally:
+            # Cancel all pending requests when read loop exits (subprocess died or cancelled)
             for future in self._pending_requests.values():
                 if not future.done():
-                    future.set_exception(ACPClientError(f"Read loop failed: {e}"))
+                    future.set_exception(ACPClientError("Agent subprocess terminated"))
             self._pending_requests.clear()
 
     async def _handle_message(self, message_str: str) -> None:

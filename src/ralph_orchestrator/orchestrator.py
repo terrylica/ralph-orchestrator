@@ -381,9 +381,11 @@ class RalphOrchestrator:
             verbose=self.verbose
         )
         
-        if not response.success and len(self.adapters) > 1:
-            # Try fallback adapters
+        if not response.success and len(self.adapters) > 1 and not self.stop_requested:
+            # Try fallback adapters (skip if shutdown requested)
             for name, adapter in self.adapters.items():
+                if self.stop_requested:
+                    break
                 if adapter != self.current_adapter:
                     logger.info(f"Falling back to {name}")
                     response = await adapter.aexecute(

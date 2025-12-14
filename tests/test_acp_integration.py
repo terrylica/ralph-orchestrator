@@ -215,8 +215,8 @@ class TestACPMockedIntegration:
             "options": [{"id": "allow", "type": "allow"}]
         })
 
-        assert result["result"]["outcome"]["outcome"] == "selected"
-        assert result["result"]["outcome"]["optionId"] == "allow"
+        assert result["outcome"]["outcome"] == "selected"
+        assert result["outcome"]["optionId"] == "allow"
 
     @pytest.mark.asyncio
     async def test_permission_handling_deny_all(self):
@@ -231,7 +231,7 @@ class TestACPMockedIntegration:
             "options": [{"id": "deny", "type": "deny"}]
         })
 
-        assert result["result"]["outcome"]["outcome"] == "cancelled"
+        assert result["outcome"]["outcome"] == "cancelled"
 
     @pytest.mark.asyncio
     async def test_permission_handling_allowlist(self):
@@ -248,7 +248,7 @@ class TestACPMockedIntegration:
             "reason": "Read file",
             "options": [{"id": "allow", "type": "allow"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "selected"
+        assert result["outcome"]["outcome"] == "selected"
 
         # Should deny write
         result = adapter._handle_permission_request({
@@ -257,7 +257,7 @@ class TestACPMockedIntegration:
             "reason": "Write file",
             "options": [{"id": "deny", "type": "deny"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "cancelled"
+        assert result["outcome"]["outcome"] == "cancelled"
 
         # Should approve terminal
         result = adapter._handle_permission_request({
@@ -266,7 +266,7 @@ class TestACPMockedIntegration:
             "reason": "List files",
             "options": [{"id": "allow", "type": "allow"}]
         })
-        assert result["result"]["outcome"]["outcome"] == "selected"
+        assert result["outcome"]["outcome"] == "selected"
 
 
 class TestACPFileOperationsMocked:

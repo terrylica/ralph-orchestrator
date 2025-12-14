@@ -204,6 +204,74 @@ class TestACPAdapterInitialize:
             # Check notification handler was registered
             mock_client.on_notification.assert_called()
 
+    @pytest.mark.asyncio
+    async def test_initialize_auto_adds_experimental_acp_for_gemini(self):
+        """Test _initialize auto-adds --experimental-acp for Gemini CLI."""
+        adapter = ACPAdapter(agent_command="gemini", agent_args=[])
+
+        mock_client = self._create_mock_client(
+            {"protocolVersion": "2024-01", "capabilities": {}},
+            {"sessionId": "test-session-123"},
+        )
+
+        with patch("ralph_orchestrator.adapters.acp.ACPClient", return_value=mock_client) as mock_cls:
+            await adapter._initialize()
+
+            # Check ACPClient was created with --experimental-acp flag
+            call_kwargs = mock_cls.call_args[1]
+            assert "--experimental-acp" in call_kwargs["args"]
+
+    @pytest.mark.asyncio
+    async def test_initialize_does_not_duplicate_experimental_acp(self):
+        """Test _initialize doesn't add duplicate --experimental-acp flag."""
+        adapter = ACPAdapter(agent_command="gemini", agent_args=["--experimental-acp"])
+
+        mock_client = self._create_mock_client(
+            {"protocolVersion": "2024-01", "capabilities": {}},
+            {"sessionId": "test-session-123"},
+        )
+
+        with patch("ralph_orchestrator.adapters.acp.ACPClient", return_value=mock_client) as mock_cls:
+            await adapter._initialize()
+
+            # Check ACPClient was created with exactly one --experimental-acp flag
+            call_kwargs = mock_cls.call_args[1]
+            assert call_kwargs["args"].count("--experimental-acp") == 1
+
+    @pytest.mark.asyncio
+    async def test_initialize_no_experimental_acp_for_non_gemini(self):
+        """Test _initialize doesn't add --experimental-acp for non-gemini agents."""
+        adapter = ACPAdapter(agent_command="other-agent", agent_args=[])
+
+        mock_client = self._create_mock_client(
+            {"protocolVersion": "2024-01", "capabilities": {}},
+            {"sessionId": "test-session-123"},
+        )
+
+        with patch("ralph_orchestrator.adapters.acp.ACPClient", return_value=mock_client) as mock_cls:
+            await adapter._initialize()
+
+            # Check ACPClient was created without --experimental-acp flag
+            call_kwargs = mock_cls.call_args[1]
+            assert "--experimental-acp" not in call_kwargs["args"]
+
+    @pytest.mark.asyncio
+    async def test_initialize_handles_gemini_path(self):
+        """Test _initialize handles full path to gemini binary."""
+        adapter = ACPAdapter(agent_command="/usr/local/bin/gemini", agent_args=[])
+
+        mock_client = self._create_mock_client(
+            {"protocolVersion": "2024-01", "capabilities": {}},
+            {"sessionId": "test-session-123"},
+        )
+
+        with patch("ralph_orchestrator.adapters.acp.ACPClient", return_value=mock_client) as mock_cls:
+            await adapter._initialize()
+
+            # Check ACPClient was created with --experimental-acp flag
+            call_kwargs = mock_cls.call_args[1]
+            assert "--experimental-acp" in call_kwargs["args"]
+
 
 class TestACPAdapterExecute:
     """Tests for execute and aexecute methods."""
