@@ -12,13 +12,13 @@
         <meta name="author" content="Ralph Orchestrator Contributors">
       
       
-        <link rel="canonical" href="https://mikeyobrien.github.io/ralph-orchestrator/advanced/architecture/">
+        <link rel="canonical" href="https://mikeyobrien.github.io/ralph-orchestrator/advanced/loop-detection/">
       
       
-        <link rel="prev" href="../../deployment/production/">
+        <link rel="prev" href="../architecture/">
       
       
-        <link rel="next" href="../loop-detection/">
+        <link rel="next" href="../security/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>System Architecture - Ralph Orchestrator</title>
+        <title>Loop Detection - Ralph Orchestrator</title>
       
     
     
@@ -90,7 +90,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#system-architecture" class="md-skip">
+        <a href="#loop-detection" class="md-skip">
           Skip to content
         </a>
       
@@ -129,7 +129,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              System Architecture
+              Loop Detection
             
           </span>
         </div>
@@ -311,7 +311,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+        <a href="../architecture/" class="md-tabs__link">
           
   
   
@@ -1130,6 +1130,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -1149,7 +1177,7 @@
   <span class="md-ellipsis">
     
   
-    System Architecture
+    Loop Detection
   
 
     
@@ -1167,7 +1195,7 @@
   <span class="md-ellipsis">
     
   
-    System Architecture
+    Loop Detection
   
 
     
@@ -1204,22 +1232,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#core-components" class="md-nav__link">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Core Components
+        How It Works
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Core Components">
+    <nav class="md-nav" aria-label="How It Works">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-orchestration-engine" class="md-nav__link">
+  <a href="#detection-algorithm" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Orchestration Engine
+        Detection Algorithm
       
     </span>
   </a>
@@ -1227,32 +1255,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-agent-abstraction-layer" class="md-nav__link">
+  <a href="#similarity-threshold" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Agent Abstraction Layer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-state-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. State Management
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-git-integration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Git Integration
+        Similarity Threshold
       
     </span>
   </a>
@@ -1265,10 +1271,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#system-flow" class="md-nav__link">
+  <a href="#example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        System Flow
+        Example
       
     </span>
   </a>
@@ -1276,55 +1282,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#design-principles" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Design Principles
+        Configuration
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Design Principles">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interaction-with-other-safety-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interaction with Other Safety Features
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Interaction with Other Safety Features">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-simplicity-over-complexity" class="md-nav__link">
+  <a href="#integration-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Simplicity Over Complexity
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-fail-safe-operations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Fail-Safe Operations
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-agent-agnostic" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Agent Agnostic
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-observable-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Observable Behavior
+        Integration Architecture
       
     </span>
   </a>
@@ -1337,10 +1321,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
+  <a href="#when-loop-detection-triggers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Directory Structure
+        When Loop Detection Triggers
       
     </span>
   </a>
@@ -1348,236 +1332,57 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#key-classes-and-functions" class="md-nav__link">
+  <a href="#logging" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Key Classes and Functions
+        Logging
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Key Classes and Functions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#ralphorchestrator-class" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        RalphOrchestrator Class
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#agent-execution" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Agent Execution
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#error-handling" class="md-nav__link">
+  <a href="#resetting-loop-detection" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Error Handling
+        Resetting Loop Detection
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Error Handling">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#retry-strategy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Retry Strategy
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#recovery-mechanisms" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Recovery Mechanisms
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#performance-considerations" class="md-nav__link">
+  <a href="#dependencies" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Performance Considerations
+        Dependencies
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Performance Considerations">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#resource-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Resource Usage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#scalability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Scalability
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#security" class="md-nav__link">
+  <a href="#best-practices" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Security
+        Best Practices
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Security">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#process-isolation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Process Isolation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#git-safety" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Git Safety
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#monitoring" class="md-nav__link">
+  <a href="#related-topics" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Monitoring
+        Related Topics
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Monitoring">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#metrics-collection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metrics Collection
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#health-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Health Checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#future-architecture-considerations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Future Architecture Considerations
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Future Architecture Considerations">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#potential-enhancements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Potential Enhancements
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#maintaining-simplicity" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Maintaining Simplicity
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1585,34 +1390,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../loop-detection/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Loop Detection
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -2730,22 +2507,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#core-components" class="md-nav__link">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Core Components
+        How It Works
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Core Components">
+    <nav class="md-nav" aria-label="How It Works">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-orchestration-engine" class="md-nav__link">
+  <a href="#detection-algorithm" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Orchestration Engine
+        Detection Algorithm
       
     </span>
   </a>
@@ -2753,32 +2530,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-agent-abstraction-layer" class="md-nav__link">
+  <a href="#similarity-threshold" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Agent Abstraction Layer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-state-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. State Management
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-git-integration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Git Integration
+        Similarity Threshold
       
     </span>
   </a>
@@ -2791,10 +2546,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#system-flow" class="md-nav__link">
+  <a href="#example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        System Flow
+        Example
       
     </span>
   </a>
@@ -2802,55 +2557,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#design-principles" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Design Principles
+        Configuration
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Design Principles">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interaction-with-other-safety-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interaction with Other Safety Features
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Interaction with Other Safety Features">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-simplicity-over-complexity" class="md-nav__link">
+  <a href="#integration-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Simplicity Over Complexity
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-fail-safe-operations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Fail-Safe Operations
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-agent-agnostic" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Agent Agnostic
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-observable-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Observable Behavior
+        Integration Architecture
       
     </span>
   </a>
@@ -2863,10 +2596,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
+  <a href="#when-loop-detection-triggers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Directory Structure
+        When Loop Detection Triggers
       
     </span>
   </a>
@@ -2874,236 +2607,57 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#key-classes-and-functions" class="md-nav__link">
+  <a href="#logging" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Key Classes and Functions
+        Logging
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Key Classes and Functions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#ralphorchestrator-class" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        RalphOrchestrator Class
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#agent-execution" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Agent Execution
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#error-handling" class="md-nav__link">
+  <a href="#resetting-loop-detection" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Error Handling
+        Resetting Loop Detection
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Error Handling">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#retry-strategy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Retry Strategy
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#recovery-mechanisms" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Recovery Mechanisms
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#performance-considerations" class="md-nav__link">
+  <a href="#dependencies" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Performance Considerations
+        Dependencies
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Performance Considerations">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#resource-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Resource Usage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#scalability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Scalability
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#security" class="md-nav__link">
+  <a href="#best-practices" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Security
+        Best Practices
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Security">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#process-isolation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Process Isolation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#git-safety" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Git Safety
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#monitoring" class="md-nav__link">
+  <a href="#related-topics" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Monitoring
+        Related Topics
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Monitoring">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#metrics-collection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metrics Collection
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#health-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Health Checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#future-architecture-considerations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Future Architecture Considerations
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Future Architecture Considerations">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#potential-enhancements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Potential Enhancements
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#maintaining-simplicity" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Maintaining Simplicity
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -3130,7 +2684,7 @@
 
 
   
-    <a href="https://github.com/mikeyobrien/ralph-orchestrator/edit/main/docs/advanced/architecture.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/mikeyobrien/ralph-orchestrator/edit/main/docs/advanced/loop-detection.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -3139,210 +2693,274 @@
     
       
     
-    <a href="https://github.com/mikeyobrien/ralph-orchestrator/raw/main/docs/advanced/architecture.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/mikeyobrien/ralph-orchestrator/raw/main/docs/advanced/loop-detection.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
     </a>
   
 
 
-<h1 id="system-architecture">System Architecture<a class="headerlink" href="#system-architecture" title="Permanent link">&para;</a></h1>
+<h1 id="loop-detection">Loop Detection<a class="headerlink" href="#loop-detection" title="Permanent link">&para;</a></h1>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
-<p>Ralph Orchestrator implements a simple yet effective architecture based on the Ralph Wiggum technique - a continuous loop pattern that runs AI agents until task completion.</p>
-<h2 id="core-components">Core Components<a class="headerlink" href="#core-components" title="Permanent link">&para;</a></h2>
-<h3 id="1-orchestration-engine">1. Orchestration Engine<a class="headerlink" href="#1-orchestration-engine" title="Permanent link">&para;</a></h3>
-<p>The heart of Ralph is the orchestration loop in <code>ralph_orchestrator.py</code>:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">while</span> <span class="ow">not</span> <span class="n">task_complete</span><span class="p">:</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">execute_agent</span><span class="p">()</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">check_completion</span><span class="p">()</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">handle_errors</span><span class="p">()</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">checkpoint_if_needed</span><span class="p">()</span>
-</span></code></pre></div>
-<h3 id="2-agent-abstraction-layer">2. Agent Abstraction Layer<a class="headerlink" href="#2-agent-abstraction-layer" title="Permanent link">&para;</a></h3>
-<p>Ralph supports multiple AI agents through a unified interface:</p>
-<ul>
-<li><strong>Claude</strong> (Anthropic Claude Code CLI)</li>
-<li><strong>Q Chat</strong> (Q CLI tool) </li>
-<li><strong>Gemini</strong> (Google Gemini CLI)</li>
-</ul>
-<p>Each agent is executed through subprocess calls with consistent error handling and output capture.</p>
-<h3 id="3-state-management">3. State Management<a class="headerlink" href="#3-state-management" title="Permanent link">&para;</a></h3>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>.agent/
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>├── metrics/        # Performance and state data
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>├── checkpoints/    # Git checkpoint markers
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>├── prompts/        # Archived prompt history
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>└── plans/          # Agent planning documents
-</span></code></pre></div>
-<h3 id="4-git-integration">4. Git Integration<a class="headerlink" href="#4-git-integration" title="Permanent link">&para;</a></h3>
-<p>Ralph uses Git for:
-- <strong>Checkpointing</strong>: Regular commits for recovery
-- <strong>History</strong>: Track code evolution
-- <strong>Rollback</strong>: Reset to last known good state</p>
-<h2 id="system-flow">System Flow<a class="headerlink" href="#system-flow" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>graph TD
-    A[Start] --&gt; B[Load Configuration]
-    B --&gt; C[Detect Available Agents]
-    C --&gt; D[Initialize Workspace]
-    D --&gt; E[Read PROMPT.md]
-    E --&gt; F{Task Complete?}
-    F --&gt;|No| G[Execute Agent]
-    G --&gt; H[Process Output]
-    H --&gt; I{Error?}
-    I --&gt;|Yes| J[Retry Logic]
-    I --&gt;|No| K[Update State]
-    J --&gt; L{Max Retries?}
-    L --&gt;|No| G
-    L --&gt;|Yes| M[Stop]
-    K --&gt; N{Checkpoint Interval?}
-    N --&gt;|Yes| O[Create Git Checkpoint]
-    N --&gt;|No| E
-    O --&gt; E
-    F --&gt;|Yes| P[Final Checkpoint]
-    P --&gt; Q[End]</code></pre>
-<h2 id="design-principles">Design Principles<a class="headerlink" href="#design-principles" title="Permanent link">&para;</a></h2>
-<h3 id="1-simplicity-over-complexity">1. Simplicity Over Complexity<a class="headerlink" href="#1-simplicity-over-complexity" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Core orchestrator is ~400 lines of Python</li>
-<li>No external dependencies beyond AI CLI tools</li>
-<li>Clear, readable code structure</li>
-</ul>
-<h3 id="2-fail-safe-operations">2. Fail-Safe Operations<a class="headerlink" href="#2-fail-safe-operations" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Automatic retry with exponential backoff</li>
-<li>State persistence across failures</li>
-<li>Git checkpoints for recovery</li>
-</ul>
-<h3 id="3-agent-agnostic">3. Agent Agnostic<a class="headerlink" href="#3-agent-agnostic" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Unified interface for all AI agents</li>
-<li>Auto-detection of available tools</li>
-<li>Graceful fallback when agents unavailable</li>
-</ul>
-<h3 id="4-observable-behavior">4. Observable Behavior<a class="headerlink" href="#4-observable-behavior" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Comprehensive logging</li>
-<li>Metrics collection</li>
-<li>State inspection tools</li>
-</ul>
-<h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>ralph-orchestrator/
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── ralph_orchestrator.py     # Core orchestration engine
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>├── ralph                     # Bash wrapper script
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>├── PROMPT.md                # User task definition
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>├── .agent/                  # Ralph workspace
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>│   ├── metrics/            # JSON state files
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>│   │   └── state_*.json
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>│   ├── checkpoints/        # Git checkpoint markers
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>│   │   └── checkpoint_*.txt
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>│   ├── prompts/            # Archived prompts
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>│   │   └── prompt_*.md
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>│   └── plans/              # Planning documents
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>│       └── *.md
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>└── test_comprehensive.py    # Test suite
-</span></code></pre></div>
-<h2 id="key-classes-and-functions">Key Classes and Functions<a class="headerlink" href="#key-classes-and-functions" title="Permanent link">&para;</a></h2>
-<h3 id="ralphorchestrator-class">RalphOrchestrator Class<a class="headerlink" href="#ralphorchestrator-class" title="Permanent link">&para;</a></h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">RalphOrchestrator</span><span class="p">:</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">):</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize orchestrator with configuration&quot;&quot;&quot;</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Main orchestration loop&quot;&quot;&quot;</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">execute_agent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">:</span>
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute AI agent with prompt&quot;&quot;&quot;</span>
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">check_task_complete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prompt_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if task is marked complete&quot;&quot;&quot;</span>
-</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>
-</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">create_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iteration</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Create Git checkpoint&quot;&quot;&quot;</span>
-</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>
-</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">save_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Persist current state to disk&quot;&quot;&quot;</span>
-</span></code></pre></div>
-<h3 id="agent-execution">Agent Execution<a class="headerlink" href="#agent-execution" title="Permanent link">&para;</a></h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">execute_agent</span><span class="p">(</span><span class="n">agent</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute AI agent and capture output&quot;&quot;&quot;</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span><span class="n">agent</span><span class="p">,</span> <span class="n">prompt</span><span class="p">]</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        <span class="n">cmd</span><span class="p">,</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        <span class="n">timeout</span><span class="o">=</span><span class="mi">300</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="p">)</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="k">return</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span>
-</span></code></pre></div>
-<h2 id="error-handling">Error Handling<a class="headerlink" href="#error-handling" title="Permanent link">&para;</a></h2>
-<h3 id="retry-strategy">Retry Strategy<a class="headerlink" href="#retry-strategy" title="Permanent link">&para;</a></h3>
+<p>Ralph Orchestrator includes automatic loop detection to prevent agents from getting stuck in repetitive cycles. This feature uses fuzzy string matching to compare recent agent outputs and detect when an agent is producing similar responses repeatedly.</p>
+<h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<p>The <code>SafetyGuard</code> class maintains a sliding window of the last 5 agent outputs. After each successful iteration, the current output is compared against this history using <a href="https://github.com/rapidfuzz/RapidFuzz">rapidfuzz</a>, a fast fuzzy string matching library.</p>
+<h3 id="detection-algorithm">Detection Algorithm<a class="headerlink" href="#detection-algorithm" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Initial attempt</li>
-<li>Exponential backoff (2, 4, 8, 16 seconds)</li>
-<li>Maximum 5 consecutive failures</li>
-<li>State preserved between attempts</li>
+<li>After each successful iteration, the agent's output is captured</li>
+<li>The output is compared against the last 5 stored outputs</li>
+<li>If any comparison exceeds the 90% similarity threshold, a loop is detected</li>
+<li>The current output is added to the history (oldest removed if at capacity)</li>
+<li>When a loop is detected, the orchestrator logs a warning and exits</li>
 </ol>
-<h3 id="recovery-mechanisms">Recovery Mechanisms<a class="headerlink" href="#recovery-mechanisms" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Git reset to last checkpoint</li>
-<li>Manual intervention points</li>
-<li>State file analysis tools</li>
-</ul>
-<h2 id="performance-considerations">Performance Considerations<a class="headerlink" href="#performance-considerations" title="Permanent link">&para;</a></h2>
-<h3 id="resource-usage">Resource Usage<a class="headerlink" href="#resource-usage" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Minimal memory footprint (~50MB)</li>
-<li>CPU bound by AI agent execution</li>
-<li>Disk I/O for state persistence</li>
-</ul>
-<h3 id="scalability">Scalability<a class="headerlink" href="#scalability" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Single task execution (by design)</li>
-<li>Parallel execution via multiple instances</li>
-<li>No shared state between instances</li>
-</ul>
-<h2 id="security">Security<a class="headerlink" href="#security" title="Permanent link">&para;</a></h2>
-<h3 id="process-isolation">Process Isolation<a class="headerlink" href="#process-isolation" title="Permanent link">&para;</a></h3>
-<ul>
-<li>AI agents run in subprocess</li>
-<li>No direct code execution</li>
-<li>Sandboxed file system access</li>
-</ul>
-<h3 id="git-safety">Git Safety<a class="headerlink" href="#git-safety" title="Permanent link">&para;</a></h3>
-<ul>
-<li>No force pushes</li>
-<li>Checkpoint-only commits</li>
-<li>Preserves user commits</li>
-</ul>
-<h2 id="monitoring">Monitoring<a class="headerlink" href="#monitoring" title="Permanent link">&para;</a></h2>
-<h3 id="metrics-collection">Metrics Collection<a class="headerlink" href="#metrics-collection" title="Permanent link">&para;</a></h3>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">&quot;iteration_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">15</span><span class="p">,</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">&quot;runtime&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">234.5</span><span class="p">,</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="nt">&quot;agent&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;claude&quot;</span><span class="p">,</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span><span class="nt">&quot;errors&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span><span class="nt">&quot;checkpoints&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">15</span><span class="p">]</span>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="p">}</span>
+<h4 id="sliding-window-visualization">Sliding Window Visualization<a class="headerlink" href="#sliding-window-visualization" title="Permanent link">&para;</a></h4>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>                                         🔄 Sliding Window (deque maxlen=5)
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>┌────────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐  evicted   ╭───╮
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│ New Output │ ──&gt; │ Output 5 │ ──&gt; │ Output 4 │ ──&gt; │ Output 3 │ ──&gt; │ Output 2 │ ──&gt; │ Output 1 │ ─────────&gt; │ X │
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>└────────────┘     └──────────┘     └──────────┘     └──────────┘     └──────────┘     └──────────┘            ╰───╯
 </span></code></pre></div>
-<h3 id="health-checks">Health Checks<a class="headerlink" href="#health-checks" title="Permanent link">&para;</a></h3>
+<details>
+<summary>graph-easy source</summary>
+
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>graph { label: &quot;🔄 Sliding Window (deque maxlen=5)&quot;; flow: east; }
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>[ New Output ] -&gt; [ Output 5 ] -&gt; [ Output 4 ] -&gt; [ Output 3 ] -&gt; [ Output 2 ] -&gt; [ Output 1 ]
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>[ Output 1 ] -- evicted --&gt; [ X ] { shape: rounded; }
+</span></code></pre></div>
+
+</details>
+
+<h3 id="similarity-threshold">Similarity Threshold<a class="headerlink" href="#similarity-threshold" title="Permanent link">&para;</a></h3>
+<p>The default threshold is <strong>90% similarity</strong> (0.9 ratio). This was chosen based on industry best practices:</p>
 <ul>
-<li>Agent availability detection</li>
-<li>Prompt file validation</li>
-<li>Git repository status</li>
+<li><strong>0.95</strong>: Too strict - only catches nearly identical outputs</li>
+<li><strong>0.90</strong>: Balanced - catches repetitive patterns while allowing variation (recommended)</li>
+<li><strong>0.85</strong>: Loose - higher false positive rate</li>
 </ul>
-<h2 id="future-architecture-considerations">Future Architecture Considerations<a class="headerlink" href="#future-architecture-considerations" title="Permanent link">&para;</a></h2>
-<h3 id="potential-enhancements">Potential Enhancements<a class="headerlink" href="#potential-enhancements" title="Permanent link">&para;</a></h3>
+<h4 id="decision-flow">Decision Flow<a class="headerlink" href="#decision-flow" title="Permanent link">&para;</a></h4>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>              🔍 Loop Detection Decision
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>                         ╭────────────────────╮
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>                         │   Current Output   │
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>                         ╰────────────────────╯
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>                           │
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>                           │
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>                           ∨
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>                         ┌────────────────────┐
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>                         │ Compare to History │ &lt;┐
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>                         └────────────────────┘  │
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>                           │                     │
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>                           │                     │
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>                           ∨                     │
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>╔═══════════════╗  yes   ┌────────────────────┐  │
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>║ LOOP DETECTED ║ &lt;───── │   ratio &gt;= 90%?    │  │ yes
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>╚═══════════════╝        └────────────────────┘  │
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>                           │                     │
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>                           │ no                  │
+</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>                           ∨                     │
+</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>                         ┌────────────────────┐  │
+</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>                         │   More outputs?    │ ─┘
+</span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>                         └────────────────────┘
+</span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>                           │
+</span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>                           │ no
+</span><span id="__span-2-26"><a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>                           ∨
+</span><span id="__span-2-27"><a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>                         ┌────────────────────┐
+</span><span id="__span-2-28"><a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>                         │   Add to History   │
+</span><span id="__span-2-29"><a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>                         └────────────────────┘
+</span><span id="__span-2-30"><a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>                           │
+</span><span id="__span-2-31"><a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>                           │
+</span><span id="__span-2-32"><a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>                           ∨
+</span><span id="__span-2-33"><a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>                         ╭────────────────────╮
+</span><span id="__span-2-34"><a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>                         │      Continue      │
+</span><span id="__span-2-35"><a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>                         ╰────────────────────╯
+</span></code></pre></div>
+<details>
+<summary>graph-easy source</summary>
+
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>graph { label: &quot;🔍 Loop Detection Decision&quot;; flow: south; }
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>[ Current Output ] { shape: rounded; } -&gt; [ Compare to History ]
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>[ Compare to History ] -&gt; [ ratio &gt;= 90%? ]
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>[ ratio &gt;= 90%? ] -- yes --&gt; [ LOOP DETECTED ] { border: double; }
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>[ ratio &gt;= 90%? ] -- no --&gt; [ More outputs? ]
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>[ More outputs? ] -- yes --&gt; [ Compare to History ]
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>[ More outputs? ] -- no --&gt; [ Add to History ]
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>[ Add to History ] -&gt; [ Continue ] { shape: rounded; }
+</span></code></pre></div>
+
+</details>
+
+<h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Example of how loop detection works internally</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">rapidfuzz</span><span class="w"> </span><span class="kn">import</span> <span class="n">fuzz</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="c1"># Agent outputs from iterations 1-3</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="s2">&quot;Let me check the database for user information...&quot;</span><span class="p">,</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="s2">&quot;I&#39;ll query the database to find the user data...&quot;</span><span class="p">,</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="s2">&quot;Checking the database for user information...&quot;</span><span class="p">,</span>  <span class="c1"># Similar to #1</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="p">]</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="c1"># Similarity check</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="n">ratio</span> <span class="o">=</span> <span class="n">fuzz</span><span class="o">.</span><span class="n">ratio</span><span class="p">(</span><span class="n">outputs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">outputs</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="mf">100.0</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="c1"># Result: ~0.91 (91% similar) - LOOP DETECTED</span>
+</span></code></pre></div>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<p>Currently, loop detection uses fixed parameters:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>loop_threshold</code></td>
+<td>0.9</td>
+<td>Similarity threshold (90%)</td>
+</tr>
+<tr>
+<td><code>recent_outputs</code></td>
+<td>5</td>
+<td>Number of outputs to compare against</td>
+</tr>
+</tbody>
+</table>
+<p>Future versions may expose these as configuration options.</p>
+<h2 id="interaction-with-other-safety-features">Interaction with Other Safety Features<a class="headerlink" href="#interaction-with-other-safety-features" title="Permanent link">&para;</a></h2>
+<p>Loop detection works alongside other safety mechanisms:</p>
 <ol>
-<li><strong>Plugin System</strong>: Dynamic agent loading</li>
-<li><strong>Web Interface</strong>: Browser-based monitoring</li>
-<li><strong>Distributed Execution</strong>: Task parallelization</li>
-<li><strong>Cloud Integration</strong>: Remote execution support</li>
+<li><strong>Iteration Limit</strong>: Maximum iterations (default: 100)</li>
+<li><strong>Runtime Limit</strong>: Maximum time (default: 4 hours)</li>
+<li><strong>Cost Limit</strong>: Maximum cost (default: $10)</li>
+<li><strong>Consecutive Failure Limit</strong>: Max failures in a row (default: 5)</li>
+<li><strong>Loop Detection</strong>: Similarity-based output comparison</li>
 </ol>
-<h3 id="maintaining-simplicity">Maintaining Simplicity<a class="headerlink" href="#maintaining-simplicity" title="Permanent link">&para;</a></h3>
-<p>Any architectural changes should:
-- Preserve the core loop simplicity
-- Maintain the "unpossible" philosophy
-- Keep dependencies minimal
-- Ensure deterministic behavior</p>
+<p>The orchestrator exits when <strong>any</strong> of these conditions are met.</p>
+<h3 id="integration-architecture">Integration Architecture<a class="headerlink" href="#integration-architecture" title="Permanent link">&para;</a></h3>
+<p>The following diagram shows how loop detection integrates with the main orchestration loop:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>            ⚙️ SafetyGuard in Orchestration Loop
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>                               ╭─────────────────────╮
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>  ┌──────────────────────────&gt; │   Start Iteration   │ &lt;┐
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>  │                            ╰─────────────────────╯  │
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>  │                              │                      │
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>  │                              │                      │
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>  │                              ∨                      │
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>  │                            ┌─────────────────────┐  │
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>  │                            │ SafetyGuard.check() │  │
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>  │                            └─────────────────────┘  │
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>  │                              │                      │
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>  │                              │                      │
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>  │                              ∨                      │
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>  │  ╔════════════════╗  no    ┌─────────────────────┐  │
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>  │  ║  STOP: Limit   ║ &lt;───── │     Limits OK?      │  │
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>  │  ╚════════════════╝        └─────────────────────┘  │
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>  │                              │                      │
+</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>  │                              │ yes                  │
+</span><span id="__span-5-20"><a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>  │                              ∨                      │
+</span><span id="__span-5-21"><a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>  │                            ┌─────────────────────┐  │
+</span><span id="__span-5-22"><a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>  │                            │  Check Completion   │  │
+</span><span id="__span-5-23"><a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>  │                            └─────────────────────┘  │
+</span><span id="__span-5-24"><a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>  │                              │                      │
+</span><span id="__span-5-25"><a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>  │                              │                      │
+</span><span id="__span-5-26"><a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>  │                              ∨                      │
+</span><span id="__span-5-27"><a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>  │  ╔════════════════╗  yes   ┌─────────────────────┐  │
+</span><span id="__span-5-28"><a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>  │  ║   STOP: Done   ║ &lt;───── │   TASK_COMPLETE?    │  │ no
+</span><span id="__span-5-29"><a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>  │  ╚════════════════╝        └─────────────────────┘  │
+</span><span id="__span-5-30"><a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>  │                              │                      │
+</span><span id="__span-5-31"><a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>  └────┐                         │ no                   │
+</span><span id="__span-5-32"><a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>       │                         ∨                      │
+</span><span id="__span-5-33"><a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>       │                       ┌─────────────────────┐  │
+</span><span id="__span-5-34"><a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>       │                       │    Execute Agent    │  │
+</span><span id="__span-5-35"><a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>       │                       └─────────────────────┘  │
+</span><span id="__span-5-36"><a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>       │                         │                      │
+</span><span id="__span-5-37"><a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>       │                         │                      │
+</span><span id="__span-5-38"><a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>       │                         ∨                      │
+</span><span id="__span-5-39"><a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a>     ┌────────────────┐  no    ┌─────────────────────┐  │
+</span><span id="__span-5-40"><a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a>     │ Handle Failure │ &lt;───── │      Success?       │  │
+</span><span id="__span-5-41"><a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a>     └────────────────┘        └─────────────────────┘  │
+</span><span id="__span-5-42"><a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a>                                 │                      │
+</span><span id="__span-5-43"><a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>                                 │ yes                  │
+</span><span id="__span-5-44"><a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a>                                 ∨                      │
+</span><span id="__span-5-45"><a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a>                               ┌─────────────────────┐  │
+</span><span id="__span-5-46"><a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a>                               │    detect_loop()    │  │
+</span><span id="__span-5-47"><a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a>                               └─────────────────────┘  │
+</span><span id="__span-5-48"><a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a>                                 │                      │
+</span><span id="__span-5-49"><a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a>                                 │                      │
+</span><span id="__span-5-50"><a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a>                                 ∨                      │
+</span><span id="__span-5-51"><a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a>                               ┌─────────────────────┐  │
+</span><span id="__span-5-52"><a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a>                               │     Loop Found?     │ ─┘
+</span><span id="__span-5-53"><a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a>                               └─────────────────────┘
+</span><span id="__span-5-54"><a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a>                                 │
+</span><span id="__span-5-55"><a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a>                                 │ yes
+</span><span id="__span-5-56"><a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a>                                 ∨
+</span><span id="__span-5-57"><a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a>                               ╔═════════════════════╗
+</span><span id="__span-5-58"><a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a>                               ║     STOP: Loop      ║
+</span><span id="__span-5-59"><a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a>                               ╚═════════════════════╝
+</span></code></pre></div>
+<details>
+<summary>graph-easy source</summary>
+
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>graph { label: &quot;⚙️ SafetyGuard in Orchestration Loop&quot;; flow: south; }
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>[ Start Iteration ] { shape: rounded; } -&gt; [ SafetyGuard.check() ]
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>[ SafetyGuard.check() ] -&gt; [ Limits OK? ]
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>[ Limits OK? ] -- no --&gt; [ STOP: Limit ] { border: double; }
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>[ Limits OK? ] -- yes --&gt; [ Check Completion ]
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>[ Check Completion ] -&gt; [ TASK_COMPLETE? ]
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>[ TASK_COMPLETE? ] -- yes --&gt; [ STOP: Done ] { border: double; }
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>[ TASK_COMPLETE? ] -- no --&gt; [ Execute Agent ]
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>[ Execute Agent ] -&gt; [ Success? ]
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>[ Success? ] -- no --&gt; [ Handle Failure ]
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>[ Handle Failure ] -&gt; [ Start Iteration ]
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>[ Success? ] -- yes --&gt; [ detect_loop() ]
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>[ detect_loop() ] -&gt; [ Loop Found? ]
+</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>[ Loop Found? ] -- yes --&gt; [ STOP: Loop ] { border: double; }
+</span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>[ Loop Found? ] -- no --&gt; [ Start Iteration ]
+</span></code></pre></div>
+
+</details>
+
+<h2 id="when-loop-detection-triggers">When Loop Detection Triggers<a class="headerlink" href="#when-loop-detection-triggers" title="Permanent link">&para;</a></h2>
+<p>Loop detection helps in these scenarios:</p>
+<ul>
+<li><strong>Agent stuck on same task</strong>: Repeatedly attempting the same action</li>
+<li><strong>Oscillation</strong>: Agent switching between two similar approaches</li>
+<li><strong>API errors</strong>: Consistent retry messages</li>
+<li><strong>Placeholder responses</strong>: Agent returning similar "working on it" messages</li>
+</ul>
+<h2 id="logging">Logging<a class="headerlink" href="#logging" title="Permanent link">&para;</a></h2>
+<p>When loop detection triggers, you'll see:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>WARNING - Loop detected: 92.3% similarity to previous output
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>WARNING - Breaking loop due to repetitive agent outputs
+</span></code></pre></div>
+<h2 id="resetting-loop-detection">Resetting Loop Detection<a class="headerlink" href="#resetting-loop-detection" title="Permanent link">&para;</a></h2>
+<p>The loop detection history is automatically cleared when:</p>
+<ul>
+<li>A new orchestration session starts</li>
+<li><code>SafetyGuard.reset()</code> is called</li>
+<li>The orchestrator completes (success or failure)</li>
+</ul>
+<h2 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">&para;</a></h2>
+<p>Loop detection requires the <code>rapidfuzz</code> package:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;rapidfuzz&gt;=3.0.0,&lt;4.0.0&quot;</span>
+</span></code></pre></div>
+<p>If rapidfuzz is not installed, loop detection is gracefully skipped with a debug log message.</p>
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Monitor for loops</strong>: Watch for loop detection warnings in logs</li>
+<li><strong>Improve prompts</strong>: If loops occur frequently, refine your task description</li>
+<li><strong>Check task completeness</strong>: Ensure tasks have clear completion criteria</li>
+<li><strong>Use completion markers</strong>: Add <code>- [x] TASK_COMPLETE</code> when done</li>
+</ol>
+<h2 id="related-topics">Related Topics<a class="headerlink" href="#related-topics" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../guide/overview/#safety-features">Safety Mechanisms</a></li>
+<li><a href="../../troubleshooting/">Troubleshooting</a></li>
+<li><a href="../../glossary/#l">Glossary: Loop Detection</a></li>
+</ul>
 
 
 
